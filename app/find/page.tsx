@@ -67,7 +67,7 @@ export default async function Directory({ searchParams }: { searchParams: Promis
           const pics = (thumbs.get(b.id) || []).length ? thumbs.get(b.id)! : b.cover_url ? [b.cover_url] : [];
           return (
             <div key={b.id} className={`row${s ? " sponsored" : ""}`}>
-              <Logo name={b.name} url={b.logo_url} />
+              <Logo name={b.name} url={b.logo_url} focus={b.logo_focus} />
               <div>
                 <h3>
                   <Link href={`/b/${b.slug}`}>{b.name}</Link>

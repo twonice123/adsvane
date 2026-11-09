@@ -15,6 +15,8 @@ export type Business = {
   service_area: string | null;
   logo_url: string | null;
   cover_url: string | null;
+  cover_focus: string | null;
+  logo_focus: string | null;
   contact_email: string | null;
   hours: Record<string, { open: string; close: string } | null>;
   amenities: string[];
@@ -174,4 +176,24 @@ export function estimate(dailyCents: number, days: number, radius: number, searc
   const emails = email ? Math.min(Math.round(dollars * 25 * reach), Math.max(optins, 0) * Math.ceil(days / 7)) : 0;
   const visits = Math.round(views * 0.06 + emails * 0.04);
   return { views, emails, visits, total: dailyCents * days };
+}
+
+// Framing for a cover or profile picture, saved as "x y zoom".
+export type Focus = { x: number; y: number; z: number };
+export function parseFocus(f: string | null | undefined): Focus {
+  const [x, y, z] = (f || "").split(" ").map(Number);
+  const ok = (n: number, lo: number, hi: number) => Number.isFinite(n) && n >= lo && n <= hi;
+  return ok(x, 0, 100) && ok(y, 0, 100) && ok(z, 1, 3) ? { x, y, z } : { x: 50, y: 50, z: 1 };
+}
+export function focusText(f: Focus) {
+  const r = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
+  return `${r(Math.min(100, Math.max(0, f.x)))} ${r(Math.min(100, Math.max(0, f.y)))} ${r(Math.min(3, Math.max(1, f.z)), 2)}`;
+}
+export function focusStyle(f: string | null | undefined | Focus) {
+  const v = typeof f === "object" && f ? f : parseFocus(f as string | null | undefined);
+  return {
+    objectPosition: `${v.x}% ${v.y}%`,
+    transform: v.z !== 1 ? `scale(${v.z})` : undefined,
+    transformOrigin: `${v.x}% ${v.y}%`,
+  } as const;
 }

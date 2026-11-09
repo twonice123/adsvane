@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { MAX_PHOTOS, PHOTO_BUCKET } from "@/lib/data";
+import { MAX_PHOTOS, PHOTO_BUCKET, focusText, parseFocus } from "@/lib/data";
 
 export type PhotoState = { error?: string; ok?: string };
 
@@ -78,7 +78,7 @@ export async function uploadPhoto(_prev: PhotoState, fd: FormData): Promise<Phot
       }
     } else {
       const col = kind === "logo" ? "logo_url" : "cover_url";
-      const { error } = await supabase.from("businesses").update({ [col]: url }).eq("id", biz.id);
+      const { error } = await supabase.from("businesses").update({ [col]: url, [kind === "logo" ? "logo_focus" : "cover_focus"]: null }).eq("id", biz.id);
       if (error) {
         await supabase.storage.from(PHOTO_BUCKET).remove([path]);
         return { error: "Couldn't save the photo. Please try again." };
@@ -103,7 +103,7 @@ export async function removePhoto(fd: FormData) {
 
   if (what === "logo" || what === "cover") {
     const col = what === "logo" ? "logo_url" : "cover_url";
-    await supabase.from("businesses").update({ [col]: null }).eq("id", biz.id);
+    await supabase.from("businesses").update({ [col]: null, [what === "logo" ? "logo_focus" : "cover_focus"]: null }).eq("id", biz.id);
     const old = ownPath(biz[col], biz.id);
     if (old) await supabase.storage.from(PHOTO_BUCKET).remove([old]);
   } else {
@@ -115,4 +115,15 @@ export async function removePhoto(fd: FormData) {
     }
   }
   refresh(biz.id, biz.slug);
+}
+
+export async function saveFocus(businessId: string, what: "logo" | "cover", focus: string): Promise<{ error?: string }> {
+  if (what !== "logo" && what !== "cover") return { error: "Something went wrong." };
+  const f = parseFocus(focus);
+  const { supabase, biz } = await ownBusiness(businessId);
+  if (!biz) return { error: "Business not found." };
+  const { error } = await supabase.from("businesses").update({ [what === "logo" ? "logo_focus" : "cover_focus"]: focusText(f) }).eq("id", biz.id);
+  if (error) return { error: "Couldn't save. Please try again." };
+  refresh(biz.id, biz.slug);
+  return {};
 }

@@ -6,6 +6,7 @@ import { AMENITIES, AMENITY_LABEL, DAYS, SOCIAL, STATES, socialLink, socialText,
 import { ratingsFor, sponsoredIds } from "@/lib/queries";
 import { Logo } from "@/app/components/Logo";
 import Gallery from "@/app/components/Gallery";
+import { Cover } from "@/app/components/Cover";
 
 export const dynamic = "force-dynamic";
 
@@ -78,9 +79,9 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
         <Link href="/" style={{ color: "inherit" }}>AdsVane</Link> › <Link href={`/find?where=${encodeURIComponent(biz.city + " " + biz.state)}`} style={{ color: "inherit" }}>{biz.city}, {biz.state}</Link> › {biz.category}
       </p>
       <div className="pfhead">
-        <div className="cover big" style={biz.cover_url ? { backgroundImage: `url("${biz.cover_url}")` } : undefined} role={biz.cover_url ? "img" : undefined} aria-label={biz.cover_url ? `${biz.name} cover photo` : undefined} />
+        <Cover url={biz.cover_url} focus={biz.cover_focus} label={`${biz.name} cover photo`} />
         <div className="pfbar">
-          <Logo name={biz.name} url={biz.logo_url} size="xl" />
+          <Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />
           <div className="pfinfo">
             <h1>
               {biz.name}

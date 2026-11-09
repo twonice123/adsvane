@@ -8,6 +8,8 @@ import { Logo } from "@/app/components/Logo";
 import { stopPromotion } from "../actions";
 import { removePhoto } from "../photo-actions";
 import PhotoUpload from "./photos/PhotoUpload";
+import FrameEditor from "./FrameEditor";
+import { Cover } from "@/app/components/Cover";
 import CopyLink from "./CopyLink";
 import ScrollTop from "@/app/components/ScrollTop";
 
@@ -39,9 +41,10 @@ export default async function Manage({ params, searchParams }: { params: Promise
   return (
     <div className="wrap" style={{ marginBottom: 40 }}>
       <div className="dhead">
-        <div className="cover big" style={biz.cover_url ? { backgroundImage: `url("${biz.cover_url}")` } : undefined}>
+        <Cover url={biz.cover_url} focus={biz.cover_focus}>
           {biz.cover_url ? (
             <div className="cover-tools">
+              <FrameEditor businessId={id} kind="cover" url={biz.cover_url} focus={biz.cover_focus} />
               <PhotoUpload businessId={id} kind="cover" label="Change cover photo" className="chip" wrapClass="inl" />
               <form action={removePhoto}>
                 <input type="hidden" name="business_id" value={id} />
@@ -52,10 +55,11 @@ export default async function Manage({ params, searchParams }: { params: Promise
           ) : (
             <PhotoUpload businessId={id} kind="cover" label="+ Add cover photo" className="cover-add" wrapClass="center" />
           )}
-        </div>
+        </Cover>
         <div className="pfbar">
           <div className="pfpic">
-            <Logo name={biz.name} url={biz.logo_url} size="xl" />
+            <Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />
+            {biz.logo_url && <FrameEditor businessId={id} kind="logo" url={biz.logo_url} focus={biz.logo_focus} className="pic-adjust" />}
             <PhotoUpload businessId={id} kind="logo" label={biz.logo_url ? "Change" : "Add profile picture"} className={biz.logo_url ? "pic-change" : "pic-add"} wrapClass="pic-btn" />
           </div>
           <div className="pfinfo">
