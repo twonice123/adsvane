@@ -43,7 +43,7 @@ export default function PhotoUpload({
   const max = kind === "cover" ? 2000 : kind === "logo" ? 800 : 1600;
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = Array.from(e.target.files || []).slice(0, 30);
+    const picked = Array.from(e.target.files || []);
     e.target.value = "";
     if (!picked.length) return;
     setBusy(true);

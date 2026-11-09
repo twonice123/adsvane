@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/server";
-import { MAX_PHOTOS, money, siteUrl, starText, isRunning, type Business, type Photo, type Promotion, type Review } from "@/lib/data";
+import { money, siteUrl, starText, isRunning, type Business, type Photo, type Promotion, type Review } from "@/lib/data";
 import { ratingsFor } from "@/lib/queries";
 import { Logo } from "@/app/components/Logo";
 import { stopPromotion } from "../actions";
@@ -104,7 +104,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
 
           <section className="card" id="photos">
             <h2>Photos of your work</h2>
-            <p className="sub">Up to {MAX_PHOTOS} photos. You can pick several at once.{photos.length > 0 && ` You have ${photos.length}.`}</p>
+            <p className="sub">Add as many photos as you like. You can pick several at once.{photos.length > 0 && ` You have ${photos.length}.`}</p>
             <PhotoUpload businessId={id} kind="gallery" label="Add photos" multiple />
             {photos.length === 0 ? (
               <p className="muted" style={{ marginBottom: 0 }}>No photos yet. Businesses with photos get far more calls.</p>

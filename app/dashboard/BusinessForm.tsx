@@ -2,6 +2,19 @@
 import { useActionState } from "react";
 import { AMENITIES, CATEGORIES, DAYS, SOCIAL, STATES, socialLink, type Business } from "@/lib/data";
 import { saveBusiness, type FormState } from "./actions";
+import AddressInput from "@/app/components/AddressInput";
+import type { Place } from "@/app/api/places/route";
+
+// Fill city, state and ZIP from the address someone picked.
+function fillAddress(p: Place) {
+  const set = (id: string, v: string | null) => {
+    const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
+    if (el && v) el.value = v;
+  };
+  set("city", p.city);
+  set("state", p.state);
+  set("zip", p.zip);
+}
 
 export default function BusinessForm({ biz }: { biz?: Business }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveBusiness, {});
@@ -40,7 +53,7 @@ export default function BusinessForm({ biz }: { biz?: Business }) {
           <div className="fld"><label htmlFor="website">Website</label><input id="website" name="website" type="text" inputMode="url" autoComplete="url" defaultValue={biz?.website || ""} placeholder="yourbusiness.com" /></div>
         </div>
         <div className="fld"><label htmlFor="contact_email">Email for customers (optional)</label><input id="contact_email" name="contact_email" type="email" defaultValue={biz?.contact_email || ""} placeholder="Shown on your page so customers can email you" /></div>
-        <div className="fld"><label htmlFor="street">Street address</label><input id="street" name="street" type="text" defaultValue={biz?.street || ""} /></div>
+        <div className="fld"><label htmlFor="street">Street address</label><AddressInput id="street" name="street" defaultValue={biz?.street || ""} placeholder="Start typing, then pick your address" onPick={fillAddress} pickText={(p) => p.street || p.label} /></div>
         <div className="three">
           <div className="fld"><label htmlFor="city">City</label><input id="city" name="city" type="text" required defaultValue={biz?.city || ""} /></div>
           <div className="fld">

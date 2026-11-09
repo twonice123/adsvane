@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { MAX_PHOTOS, PHOTO_BUCKET, focusText, parseFocus } from "@/lib/data";
+import { PHOTO_BUCKET, focusText, parseFocus } from "@/lib/data";
 
 export type PhotoState = { error?: string; ok?: string };
 
@@ -51,13 +51,6 @@ export async function uploadPhoto(_prev: PhotoState, fd: FormData): Promise<Phot
   const { supabase, biz } = await ownBusiness(businessId);
   if (!biz) return { error: "Business not found." };
 
-  if (kind === "gallery") {
-    const { count } = await supabase.from("business_photos").select("id", { count: "exact", head: true }).eq("business_id", biz.id);
-    if ((count ?? 0) + files.length > MAX_PHOTOS) {
-      const left = Math.max(0, MAX_PHOTOS - (count ?? 0));
-      return { error: left ? `You can add ${left} more photo${left === 1 ? "" : "s"} (up to ${MAX_PHOTOS}).` : `You already have ${MAX_PHOTOS} photos. Remove one to add another.` };
-    }
-  }
 
   let added = 0;
   for (const file of (kind === "gallery" ? files : files.slice(0, 1))) {
@@ -74,7 +67,7 @@ export async function uploadPhoto(_prev: PhotoState, fd: FormData): Promise<Phot
       const { error } = await supabase.from("business_photos").insert({ business_id: biz.id, path, url, caption });
       if (error) {
         await supabase.storage.from(PHOTO_BUCKET).remove([path]);
-        return { error: error.message.includes("30 photos") ? error.message : "Couldn't save the photo. Please try again." };
+        return { error: "Couldn't save the photo. Please try again." };
       }
     } else {
       const col = kind === "logo" ? "logo_url" : "cover_url";

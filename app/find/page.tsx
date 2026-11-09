@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CATEGORIES, starText, type Business } from "@/lib/data";
 import { ratingsFor, sponsoredIds, cityLine } from "@/lib/queries";
 import { Logo } from "../components/Logo";
+import WhereField from "./WhereField";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Find local services" };
@@ -20,8 +21,13 @@ export default async function Directory({ searchParams }: { searchParams: Promis
 
   let query = supabase.from("businesses").select("*").order("created_at", { ascending: false }).limit(60);
   if (q) query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%,description.ilike.%${q}%`);
-  if (where) {
-    const [city, st] = where.split(/\s+(?=[A-Za-z]{2}$)/);
+  const pickedCity = clean(sp.city);
+  const pickedSt = clean(sp.st).toUpperCase();
+  if (where && pickedCity && /^[A-Z]{2}$/.test(pickedSt) && clean(sp.wl) === where) {
+    // Picked from the suggestions: match that city and state.
+    query = query.ilike("city", `%${pickedCity}%`).eq("state", pickedSt);
+  } else if (where) {
+    const [city, st] = where.replace(/,/g, " ").trim().split(/\s+(?=[A-Za-z]{2}$)/);
     query = st ? query.ilike("city", `%${city.trim()}%`).ilike("state", st) : query.or(`city.ilike.%${where}%,zip.eq.${where},state.ilike.${where}`);
   }
   if (cat) query = query.eq("category", cat);
@@ -32,13 +38,13 @@ export default async function Directory({ searchParams }: { searchParams: Promis
     ratingsFor(supabase, ids),
     sponsoredIds(supabase, ids),
     ids.length
-      ? supabase.from("business_photos").select("business_id, url").in("business_id", ids).order("created_at", { ascending: false }).limit(400)
+      ? supabase.from("business_photos").select("business_id, url").in("business_id", ids).order("created_at", { ascending: false }).limit(1000)
       : Promise.resolve({ data: [] as { business_id: string; url: string }[] }),
   ]);
   const thumbs = new Map<string, string[]>();
   for (const p of (photoRows as { business_id: string; url: string }[]) || []) {
     const t = thumbs.get(p.business_id) || [];
-    if (t.length < 4) thumbs.set(p.business_id, [...t, p.url]);
+    if (t.length < 10) thumbs.set(p.business_id, [...t, p.url]);
   }
   const sorted = [...list.filter((b) => sponsored.has(b.id)), ...list.filter((b) => !sponsored.has(b.id))];
 
@@ -48,7 +54,7 @@ export default async function Directory({ searchParams }: { searchParams: Promis
       <p className="sub">Real reviews from real customers. Listing is free for every business.</p>
       <form className="search" action="/find">
         <input name="q" defaultValue={q} placeholder="What? e.g. braids, tacos, movers" aria-label="What are you looking for" />
-        <input name="where" defaultValue={where} placeholder="Where? City, ST or ZIP" aria-label="Where" />
+        <WhereField defaultValue={where} />
         <select name="cat" defaultValue={cat} aria-label="Category">
           <option value="">All categories</option>
           {CATEGORIES.map((c) => (
@@ -64,7 +70,7 @@ export default async function Directory({ searchParams }: { searchParams: Promis
         {sorted.map((b) => {
           const r = ratings.get(b.id);
           const s = sponsored.has(b.id);
-          const pics = (thumbs.get(b.id) || []).length ? thumbs.get(b.id)! : b.cover_url ? [b.cover_url] : [];
+          const pics = [...(thumbs.get(b.id) || []), ...(b.cover_url ? [b.cover_url] : [])].slice(0, 10);
           return (
             <div key={b.id} className={`row${s ? " sponsored" : ""}`}>
               <Logo name={b.name} url={b.logo_url} focus={b.logo_focus} />

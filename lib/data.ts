@@ -35,7 +35,6 @@ export type Photo = {
 };
 
 export const PHOTO_BUCKET = "business-photos";
-export const MAX_PHOTOS = 30;
 
 export type Review = {
   id: string;

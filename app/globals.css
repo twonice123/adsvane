@@ -210,9 +210,10 @@ button.galitem:hover img{transform:scale(1.04)}
 .pic-add{position:absolute;inset:0;border-radius:50%;border:0;background:rgba(109,40,217,.82);color:#fff;font:700 14px/1.2 inherit;font-family:inherit;cursor:pointer;padding:12px;text-align:center}
 .pic-add:hover{background:rgba(91,33,182,.92)}
 .pic-change{position:absolute;right:-2px;bottom:4px;border:3px solid #fff;border-radius:999px;background:var(--ink);color:#fff;font:600 12px inherit;font-family:inherit;padding:5px 10px;cursor:pointer}
-.thumbs{grid-column:2/-1;grid-row:2;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-width:520px}
-.thumbs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block}
-@media (max-width:600px){.thumbs{grid-column:1/-1;grid-row:auto}}
+.thumbs{grid-column:2/-1;grid-row:2;display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));grid-template-rows:auto;grid-auto-rows:0;row-gap:0;column-gap:8px;overflow:hidden}
+.thumbs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block;transition:transform .2s}
+.thumbs:hover img{transform:scale(1.02)}
+@media (max-width:600px){.thumbs{grid-column:1/-1;grid-row:auto;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));column-gap:6px}}
 
 /* ---- framing (drag + zoom) ---- */
 .cover{overflow:hidden}
@@ -230,3 +231,12 @@ button.galitem:hover img{transform:scale(1.04)}
 .fe-hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:rgba(13,11,18,.65);color:#fff;font-size:13px;padding:4px 10px;border-radius:999px;pointer-events:none;white-space:nowrap}
 .fe-zoom{display:flex;align-items:center;gap:12px;margin-top:14px;font-weight:600;font-size:14px}
 .fe-zoom input{flex:1}
+
+/* ---- address suggestions ---- */
+.ac{position:relative;flex:1 1 200px;min-width:0}
+.search .ac input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff}
+.fld .ac input{width:100%;padding:10px 12px;border:1px solid #cfc6df;border-radius:9px;font:inherit;font-size:15px;background:#fff;color:var(--ink)}
+.ac-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;list-style:none;margin:0;padding:6px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgba(13,11,18,.14);max-height:320px;overflow:auto}
+.ac-list li{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:15px;line-height:1.35}
+.ac-list li.on{background:var(--brand-2)}
+.ac-ic{color:var(--brand);flex:none;width:18px;text-align:center}

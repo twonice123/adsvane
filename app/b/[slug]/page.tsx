@@ -39,7 +39,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
 
   const [{ data: reviews }, { data: photoRows }, ratings, sponsored] = await Promise.all([
     supabase.from("reviews").select("*").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(50),
-    supabase.from("business_photos").select("id, url, caption").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(30),
+    supabase.from("business_photos").select("id, url, caption").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(1000),
     ratingsFor(supabase, [biz.id]),
     sponsoredIds(supabase, [biz.id]),
   ]);
@@ -125,7 +125,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
           <section className="card" id="photos">
             <h2>Photos</h2>
             {photos.length > 0 ? (
-              <Gallery photos={photos} name={biz.name} initial={30} />
+              <Gallery photos={photos} name={biz.name} initial={60} />
             ) : (
               <p className="muted" style={{ margin: 0 }}>{biz.name} hasn&apos;t added photos yet.</p>
             )}
