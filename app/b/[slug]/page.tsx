@@ -63,7 +63,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
     <div className="wrap">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <p className="muted" style={{ marginTop: 14 }}>
-        <Link href="/" style={{ color: "inherit" }}>AdsVane</Link> › <Link href={`/?where=${encodeURIComponent(biz.city + " " + biz.state)}`} style={{ color: "inherit" }}>{biz.city}, {biz.state}</Link> › {biz.category}
+        <Link href="/" style={{ color: "inherit" }}>AdsVane</Link> › <Link href={`/find?where=${encodeURIComponent(biz.city + " " + biz.state)}`} style={{ color: "inherit" }}>{biz.city}, {biz.state}</Link> › {biz.category}
       </p>
       <div className="head">
         <Logo name={biz.name} url={biz.logo_url} size="big" />

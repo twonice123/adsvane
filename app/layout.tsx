@@ -21,8 +21,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               Ads<span>Vane</span>
             </Link>
             <nav className="nav">
-              <Link href="/">Find businesses</Link>
-              <Link href="/dashboard">For businesses</Link>
+              <Link href="/find">Find services</Link>
+              <Link href="/dashboard">Add your business</Link>
             </nav>
           </div>
         </header>

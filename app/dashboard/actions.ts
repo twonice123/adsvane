@@ -140,7 +140,7 @@ export async function startPromotion(_prev: PromoState, fd: FormData): Promise<P
     ends_at: ends,
   });
   if (error) return { error: "Couldn't start the promotion. Please try again." };
-  revalidatePath("/");
+  revalidatePath("/find");
   redirect(`/dashboard/${businessId}?promo=started`);
 }
 
@@ -148,6 +148,6 @@ export async function stopPromotion(fd: FormData) {
   const { supabase } = await requireUser();
   const businessId = str(fd, "business_id", 40);
   await supabase.from("promotions").update({ status: "stopped" }).eq("business_id", businessId).eq("status", "active");
-  revalidatePath("/");
+  revalidatePath("/find");
   redirect(`/dashboard/${businessId}?promo=stopped`);
 }
