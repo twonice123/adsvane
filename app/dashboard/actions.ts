@@ -104,7 +104,7 @@ export async function saveBusiness(_prev: FormState, fd: FormData): Promise<Form
   let slug = base;
   for (let i = 0; i < 5; i++) {
     const { data, error } = await supabase.from("businesses").insert({ ...row, slug, owner_id: user.id }).select("id").single();
-    if (!error && data) redirect(`/dashboard/${data.id}/photos?new=1`);
+    if (!error && data) redirect(`/dashboard/${data.id}?new=1`);
     if (error?.code !== "23505") return { error: "Couldn't create your listing. Please try again." };
     slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
   }

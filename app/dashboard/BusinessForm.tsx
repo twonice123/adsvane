@@ -27,7 +27,7 @@ export default function BusinessForm({ biz }: { biz?: Business }) {
           <textarea id="description" name="description" maxLength={2000} defaultValue={biz?.description || ""} placeholder="What you do, what you're known for, who you serve." />
         </div>
         {biz ? (
-          <p className="note" style={{ margin: 0 }}>To add your profile picture, cover photo and photos of your work, go to <a href={`/dashboard/${biz.id}/photos`}>Photos</a>.</p>
+          <p className="note" style={{ margin: 0 }}>To add your profile picture, cover photo and photos of your work, go to your <a href={`/dashboard/${biz.id}`}>dashboard</a>.</p>
         ) : (
           <p className="note" style={{ margin: 0 }}>You can add your profile picture, cover photo and photos of your work right after this.</p>
         )}

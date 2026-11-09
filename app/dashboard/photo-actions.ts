@@ -37,7 +37,6 @@ function ownPath(url: string | null, businessId: string) {
 
 function refresh(id: string, slug: string) {
   revalidatePath(`/dashboard/${id}`);
-  revalidatePath(`/dashboard/${id}/photos`);
   revalidatePath(`/b/${slug}`);
   revalidatePath("/find");
 }

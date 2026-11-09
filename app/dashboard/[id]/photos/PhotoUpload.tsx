@@ -28,12 +28,14 @@ export default function PhotoUpload({
   label,
   multiple = false,
   className = "b",
+  wrapClass = "",
 }: {
   businessId: string;
   kind: "logo" | "cover" | "gallery";
   label: string;
   multiple?: boolean;
   className?: string;
+  wrapClass?: string;
 }) {
   const [state, action, pending] = useActionState<PhotoState, FormData>(uploadPhoto, {});
   const [busy, setBusy] = useState(false);
@@ -60,7 +62,7 @@ export default function PhotoUpload({
 
   const working = busy || pending;
   return (
-    <div className="upl">
+    <div className={`upl ${wrapClass}`}>
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple={multiple} onChange={onPick} hidden />
       <button type="button" className={className} disabled={working} onClick={() => input.current?.click()}>
         {working ? "Uploading…" : label}
