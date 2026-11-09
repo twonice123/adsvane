@@ -1,6 +1,6 @@
 "use client";
 import { useActionState } from "react";
-import { AMENITIES, CATEGORIES, DAYS, SOCIAL, STATES, type Business } from "@/lib/data";
+import { AMENITIES, CATEGORIES, DAYS, SOCIAL, STATES, socialLink, type Business } from "@/lib/data";
 import { saveBusiness, type FormState } from "./actions";
 
 export default function BusinessForm({ biz }: { biz?: Business }) {
@@ -92,9 +92,10 @@ export default function BusinessForm({ biz }: { biz?: Business }) {
 
       <section className="card">
         <h2>Social media</h2>
+        <p className="sub">Paste the link to each of your pages. Open your page in the app or browser, copy the link, and paste it here.</p>
         <div className="two">
           {SOCIAL.map((s) => (
-            <div key={s.key} className="fld"><label htmlFor={`social_${s.key}`}>{s.label} username</label><input id={`social_${s.key}`} name={`social_${s.key}`} type="text" defaultValue={biz?.social?.[s.key] || ""} /></div>
+            <div key={s.key} className="fld"><label htmlFor={`social_${s.key}`}>{s.label} link</label><input id={`social_${s.key}`} name={`social_${s.key}`} type="text" inputMode="url" autoComplete="off" placeholder={s.example} defaultValue={socialLink(s.key, biz?.social?.[s.key]) || ""} /></div>
           ))}
         </div>
       </section>

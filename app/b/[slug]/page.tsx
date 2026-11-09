@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { AMENITIES, AMENITY_LABEL, DAYS, SOCIAL, STATES, starText, type Business, type Photo, type Review } from "@/lib/data";
+import { AMENITIES, AMENITY_LABEL, DAYS, SOCIAL, STATES, socialLink, socialText, starText, type Business, type Photo, type Review } from "@/lib/data";
 import { ratingsFor, sponsoredIds } from "@/lib/queries";
 import { Logo } from "@/app/components/Logo";
 import Gallery from "@/app/components/Gallery";
@@ -47,7 +47,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
   const address = [biz.street, biz.city, `${biz.state} ${biz.zip || ""}`.trim()].filter(Boolean).join(", ");
   const mapQ = encodeURIComponent(biz.show_address && biz.street ? address : `${biz.name} ${biz.city} ${biz.state}`);
   const amen = biz.amenities.filter((a) => AMENITY_LABEL[a]);
-  const social = SOCIAL.filter((s) => biz.social?.[s.key]);
+  const social = SOCIAL.map((s) => ({ ...s, link: socialLink(s.key, biz.social?.[s.key]) })).filter((s): s is typeof s & { link: string } => !!s.link);
   const photos = (photoRows as Pick<Photo, "id" | "url" | "caption">[]) || [];
   const tel = biz.phone ? biz.phone.replace(/[^\d+]/g, "") : "";
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapQ}`;
@@ -166,9 +166,9 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
                 <span><b>Directions</b><small>{biz.show_address && biz.street ? address : `${biz.city}, ${biz.state}`}</small></span>
               </a>
               {social.map((s) => (
-                <a key={s.key} className="cbtn" href={s.base + biz.social[s.key].replace(/^@/, "")} target="_blank" rel="noopener nofollow">
+                <a key={s.key} className="cbtn" href={s.link} target="_blank" rel="noopener nofollow">
                   <span className="cic" aria-hidden="true">{s.label.charAt(0)}</span>
-                  <span><b>{s.label}</b><small>@{biz.social[s.key].replace(/^@/, "")}</small></span>
+                  <span><b>{s.label}</b><small>{socialText(s.link)}</small></span>
                 </a>
               ))}
             </div>

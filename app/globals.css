@@ -59,7 +59,7 @@ table.hours{width:100%;font-size:14px;border-collapse:collapse}
 .hours td{padding:4px 0}.hours td:last-child{text-align:right}
 .fld{margin-bottom:14px}
 .fld label,.lbl{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
-.fld input[type=text],.fld input[type=email],.fld input[type=url],.fld input[type=tel],.fld input[type=number],.fld select,.fld textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:15px;background:#fff;color:var(--ink)}
+.fld input[type=text],.fld input[type=email],.fld input[type=url],.fld input[type=tel],.fld input[type=number],.fld select,.fld textarea{width:100%;padding:10px 12px;border:1px solid #cfc6df;border-radius:9px;font:inherit;font-size:15px;background:#fff;color:var(--ink)}
 .fld textarea{min-height:96px;resize:vertical}
 .fld input:focus,.fld select:focus,.fld textarea:focus{outline:2px solid #c4a6ff;border-color:var(--brand)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}

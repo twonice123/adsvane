@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { AMENITY_LABEL, CATEGORIES, DAYS, SOCIAL, STATES, slugify } from "@/lib/data";
+import { AMENITY_LABEL, CATEGORIES, DAYS, SOCIAL, STATES, slugify, socialLink } from "@/lib/data";
 
 export type FormState = { error?: string; saved?: boolean };
 
@@ -57,8 +57,11 @@ export async function saveBusiness(_prev: FormState, fd: FormData): Promise<Form
   const amenities = fd.getAll("amenities").map(String).filter((a) => AMENITY_LABEL[a]);
   const social: Record<string, string> = {};
   for (const s of SOCIAL) {
-    const v = str(fd, `social_${s.key}`, 100).replace(/^https?:\/\/[^/]+\//i, "").replace(/^@/, "");
-    if (v) social[s.key] = v;
+    const raw = str(fd, `social_${s.key}`, 300);
+    if (!raw) continue;
+    const link = socialLink(s.key, raw);
+    if (!link) return { error: `That ${s.label} link doesn't look right. Copy the link to your ${s.label} page, like ${s.example}` };
+    social[s.key] = link;
   }
   const services = str(fd, "services", 3000)
     .split("\n")

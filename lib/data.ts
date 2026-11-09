@@ -100,13 +100,41 @@ export const AMENITY_LABEL: Record<string, string> = Object.fromEntries(
 
 export const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-export const SOCIAL: { key: string; label: string; base: string }[] = [
-  { key: "instagram", label: "Instagram", base: "https://instagram.com/" },
-  { key: "facebook", label: "Facebook", base: "https://facebook.com/" },
-  { key: "tiktok", label: "TikTok", base: "https://tiktok.com/@" },
-  { key: "youtube", label: "YouTube", base: "https://youtube.com/@" },
-  { key: "x", label: "X (Twitter)", base: "https://x.com/" },
+export const SOCIAL: { key: string; label: string; base: string; hosts: string[]; example: string }[] = [
+  { key: "instagram", label: "Instagram", base: "https://instagram.com/", hosts: ["instagram.com", "instagr.am"], example: "https://instagram.com/yourpage" },
+  { key: "facebook", label: "Facebook", base: "https://facebook.com/", hosts: ["facebook.com", "fb.com", "fb.me", "m.facebook.com"], example: "https://facebook.com/yourpage" },
+  { key: "tiktok", label: "TikTok", base: "https://tiktok.com/@", hosts: ["tiktok.com", "vm.tiktok.com"], example: "https://tiktok.com/@yourpage" },
+  { key: "youtube", label: "YouTube", base: "https://youtube.com/@", hosts: ["youtube.com", "youtu.be", "m.youtube.com"], example: "https://youtube.com/@yourchannel" },
+  { key: "x", label: "X (Twitter)", base: "https://x.com/", hosts: ["x.com", "twitter.com"], example: "https://x.com/yourpage" },
 ];
+
+// Turns what an owner typed (a full link, a link without https, or just a
+// username) into a full link to that network. Returns null when it's a link
+// to some other website.
+export function socialLink(key: string, value: string | null | undefined): string | null {
+  const s = SOCIAL.find((x) => x.key === key);
+  const v = (value || "").trim();
+  if (!s || !v) return null;
+  const looksLikeLink = /^https?:\/\//i.test(v) || /^(www\.|m\.)?[a-z0-9-]+\.[a-z]{2,}\//i.test(v);
+  if (!looksLikeLink) {
+    const user = v.replace(/^@/, "").replace(/[^\w.\-]/g, "");
+    return user ? s.base + user : null;
+  }
+  try {
+    const u = new URL(/^https?:\/\//i.test(v) ? v : "https://" + v);
+    const host = u.hostname.toLowerCase().replace(/^www\./, "");
+    if (!s.hosts.includes(host)) return null;
+    u.protocol = "https:";
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+// Short text for a social link, like "instagram.com/yourpage".
+export function socialText(link: string) {
+  return link.replace(/^https?:\/\/(www\.)?/i, "").replace(/[?#].*$/, "").replace(/\/$/, "");
+}
 
 export function slugify(s: string) {
   return s
