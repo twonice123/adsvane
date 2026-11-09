@@ -46,6 +46,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
       <div className="btns" style={{ margin: "16px 0" }}>
         <Link className="b" href={`/b/${biz.slug}`}>View my page</Link>
         <Link className="b ghost" href={`/dashboard/${id}/edit`}>Edit my page</Link>
+        <Link className="b ghost" href={`/dashboard/${id}/photos`}>Photos</Link>
         <Link className="b ghost" href="/dashboard">All my businesses</Link>
       </div>
 

@@ -26,10 +26,11 @@ export default function BusinessForm({ biz }: { biz?: Business }) {
           <label htmlFor="description">About your business</label>
           <textarea id="description" name="description" maxLength={2000} defaultValue={biz?.description || ""} placeholder="What you do, what you're known for, who you serve." />
         </div>
-        <div className="fld">
-          <label htmlFor="logo_url">Logo image link (optional)</label>
-          <input id="logo_url" name="logo_url" type="text" inputMode="url" defaultValue={biz?.logo_url || ""} placeholder="https://…" />
-        </div>
+        {biz ? (
+          <p className="note" style={{ margin: 0 }}>To add your profile picture, cover photo and photos of your work, go to <a href={`/dashboard/${biz.id}/photos`}>Photos</a>.</p>
+        ) : (
+          <p className="note" style={{ margin: 0 }}>You can add your profile picture, cover photo and photos of your work right after this.</p>
+        )}
       </section>
 
       <section className="card">
@@ -38,6 +39,7 @@ export default function BusinessForm({ biz }: { biz?: Business }) {
           <div className="fld"><label htmlFor="phone">Phone</label><input id="phone" name="phone" type="tel" defaultValue={biz?.phone || ""} /></div>
           <div className="fld"><label htmlFor="website">Website</label><input id="website" name="website" type="text" inputMode="url" autoComplete="url" defaultValue={biz?.website || ""} placeholder="yourbusiness.com" /></div>
         </div>
+        <div className="fld"><label htmlFor="contact_email">Email for customers (optional)</label><input id="contact_email" name="contact_email" type="email" defaultValue={biz?.contact_email || ""} placeholder="Shown on your page so customers can email you" /></div>
         <div className="fld"><label htmlFor="street">Street address</label><input id="street" name="street" type="text" defaultValue={biz?.street || ""} /></div>
         <div className="three">
           <div className="fld"><label htmlFor="city">City</label><input id="city" name="city" type="text" required defaultValue={biz?.city || ""} /></div>

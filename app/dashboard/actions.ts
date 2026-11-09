@@ -45,9 +45,8 @@ export async function saveBusiness(_prev: FormState, fd: FormData): Promise<Form
   const websiteRaw = str(fd, "website", 300);
   const website = url(websiteRaw);
   if (websiteRaw && !website) return { error: "That website address doesn't look right." };
-  const logoRaw = str(fd, "logo_url", 500);
-  const logo_url = url(logoRaw);
-  if (logoRaw && !logo_url) return { error: "That logo link doesn't look right." };
+  const contact_email = str(fd, "contact_email", 200).toLowerCase() || null;
+  if (contact_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contact_email)) return { error: "That email address doesn't look right." };
 
   const hours: Record<string, { open: string; close: string } | null> = {};
   for (const d of DAYS) {
@@ -83,7 +82,7 @@ export async function saveBusiness(_prev: FormState, fd: FormData): Promise<Form
     zip: str(fd, "zip", 10) || null,
     show_address: fd.get("show_address") === "on",
     service_area: str(fd, "service_area", 120) || null,
-    logo_url,
+    contact_email,
     hours,
     amenities,
     social,
@@ -94,6 +93,7 @@ export async function saveBusiness(_prev: FormState, fd: FormData): Promise<Form
     const { error } = await supabase.from("businesses").update(row).eq("id", id).eq("owner_id", user.id);
     if (error) return { error: "Couldn't save. Please try again." };
     revalidatePath(`/dashboard/${id}`);
+    revalidatePath("/b/[slug]", "page");
     return { saved: true };
   }
 
@@ -101,7 +101,7 @@ export async function saveBusiness(_prev: FormState, fd: FormData): Promise<Form
   let slug = base;
   for (let i = 0; i < 5; i++) {
     const { data, error } = await supabase.from("businesses").insert({ ...row, slug, owner_id: user.id }).select("id").single();
-    if (!error && data) redirect(`/dashboard/${data.id}?new=1`);
+    if (!error && data) redirect(`/dashboard/${data.id}/photos?new=1`);
     if (error?.code !== "23505") return { error: "Couldn't create your listing. Please try again." };
     slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
   }

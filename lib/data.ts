@@ -14,12 +14,26 @@ export type Business = {
   show_address: boolean;
   service_area: string | null;
   logo_url: string | null;
+  cover_url: string | null;
+  contact_email: string | null;
   hours: Record<string, { open: string; close: string } | null>;
   amenities: string[];
   social: Record<string, string>;
   services: { name: string; note?: string }[];
   created_at: string;
 };
+
+export type Photo = {
+  id: string;
+  business_id: string;
+  path: string;
+  url: string;
+  caption: string | null;
+  created_at: string;
+};
+
+export const PHOTO_BUCKET = "business-photos";
+export const MAX_PHOTOS = 30;
 
 export type Review = {
   id: string;
