@@ -28,7 +28,11 @@ type Feature = {
 export async function GET(req: Request) {
   const q = new URL(req.url).searchParams.get("q")?.trim().slice(0, 120) || "";
   if (q.length < 3) return NextResponse.json([]);
-  const url = `${PHOTON}?q=${encodeURIComponent(q)}&limit=10&lang=en&bbox=-171,18,-66,72`;
+  // Prefer places near the visitor (Vercel tells us their rough location).
+  const lat = Number(req.headers.get("x-vercel-ip-latitude"));
+  const lon = Number(req.headers.get("x-vercel-ip-longitude"));
+  const near = lat && lon ? `&lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}&zoom=9&location_bias_scale=0.3` : "";
+  const url = `${PHOTON}?q=${encodeURIComponent(q)}&limit=10&lang=en&bbox=-171,18,-66,72${near}`;
   try {
     const res = await fetch(url, { headers: { "User-Agent": "AdsVane/1.0 (local business directory)" }, next: { revalidate: 86400 } });
     if (!res.ok) return NextResponse.json([]);
@@ -51,7 +55,7 @@ export async function GET(req: Request) {
       out.push({ label, street, city: city || null, state, zip, kind });
       if (out.length >= 6) break;
     }
-    return NextResponse.json(out, { headers: { "Cache-Control": "public, max-age=3600" } });
+    return NextResponse.json(out, { headers: { "Cache-Control": "private, max-age=600" } });
   } catch {
     return NextResponse.json([]);
   }
