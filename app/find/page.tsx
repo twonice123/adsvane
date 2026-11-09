@@ -28,7 +28,18 @@ export default async function Directory({ searchParams }: { searchParams: Promis
   const { data, error } = await query;
   const list = (data as Business[]) || [];
   const ids = list.map((b) => b.id);
-  const [ratings, sponsored] = await Promise.all([ratingsFor(supabase, ids), sponsoredIds(supabase, ids)]);
+  const [ratings, sponsored, { data: photoRows }] = await Promise.all([
+    ratingsFor(supabase, ids),
+    sponsoredIds(supabase, ids),
+    ids.length
+      ? supabase.from("business_photos").select("business_id, url").in("business_id", ids).order("created_at", { ascending: false }).limit(400)
+      : Promise.resolve({ data: [] as { business_id: string; url: string }[] }),
+  ]);
+  const thumbs = new Map<string, string[]>();
+  for (const p of (photoRows as { business_id: string; url: string }[]) || []) {
+    const t = thumbs.get(p.business_id) || [];
+    if (t.length < 4) thumbs.set(p.business_id, [...t, p.url]);
+  }
   const sorted = [...list.filter((b) => sponsored.has(b.id)), ...list.filter((b) => !sponsored.has(b.id))];
 
   return (
@@ -53,6 +64,7 @@ export default async function Directory({ searchParams }: { searchParams: Promis
         {sorted.map((b) => {
           const r = ratings.get(b.id);
           const s = sponsored.has(b.id);
+          const pics = (thumbs.get(b.id) || []).length ? thumbs.get(b.id)! : b.cover_url ? [b.cover_url] : [];
           return (
             <div key={b.id} className={`row${s ? " sponsored" : ""}`}>
               <Logo name={b.name} url={b.logo_url} />
@@ -75,6 +87,13 @@ export default async function Directory({ searchParams }: { searchParams: Promis
                   )}
                 </p>
               </div>
+              {pics.length > 0 && (
+                <Link href={`/b/${b.slug}#photos`} className="thumbs" aria-label={`See photos of ${b.name}`}>
+                  {pics.map((u, i) => (
+                    <img key={i} src={u} alt="" loading="lazy" />
+                  ))}
+                </Link>
+              )}
               <div className="go">
                 <Link className="b" href={`/b/${b.slug}`}>
                   View profile

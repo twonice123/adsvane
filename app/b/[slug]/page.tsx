@@ -48,7 +48,13 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
   const mapQ = encodeURIComponent(biz.show_address && biz.street ? address : `${biz.name} ${biz.city} ${biz.state}`);
   const amen = biz.amenities.filter((a) => AMENITY_LABEL[a]);
   const social = SOCIAL.map((s) => ({ ...s, link: socialLink(s.key, biz.social?.[s.key]) })).filter((s): s is typeof s & { link: string } => !!s.link);
-  const photos = (photoRows as Pick<Photo, "id" | "url" | "caption">[]) || [];
+  const workPhotos = (photoRows as Pick<Photo, "id" | "url" | "caption">[]) || [];
+  // Everything the business has posted shows under Photos, like a social page.
+  const photos = [
+    ...workPhotos,
+    ...(biz.cover_url ? [{ id: "cover", url: biz.cover_url, caption: "Cover photo" }] : []),
+    ...(biz.logo_url && /\/storage\/v1\/object\/public\//.test(biz.logo_url) ? [{ id: "logo", url: biz.logo_url, caption: "Profile picture" }] : []),
+  ];
   const tel = biz.phone ? biz.phone.replace(/[^\d+]/g, "") : "";
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapQ}`;
 
@@ -59,7 +65,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
     description: biz.description || undefined,
     telephone: biz.phone || undefined,
     url: biz.website || undefined,
-    image: [biz.cover_url, biz.logo_url, ...photos.slice(0, 3).map((p) => p.url)].filter(Boolean),
+    image: [biz.cover_url, biz.logo_url, ...workPhotos.slice(0, 3).map((p) => p.url)].filter(Boolean),
     email: biz.contact_email || undefined,
     address: { "@type": "PostalAddress", streetAddress: biz.show_address ? biz.street || undefined : undefined, addressLocality: biz.city, addressRegion: biz.state, postalCode: biz.zip || undefined, addressCountry: "US" },
     aggregateRating: r ? { "@type": "AggregateRating", ratingValue: String(r.rating), reviewCount: String(r.review_count) } : undefined,
@@ -96,12 +102,11 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
         <div className="btns pfbtns">
           {tel && <a className="b" href={`tel:${tel}`}>Call</a>}
           <a className={tel ? "b ghost" : "b"} href="#contact">Contact</a>
-          {photos.length > 0 && <a className="b ghost" href="#photos">Photos ({photos.length})</a>}
           <Link className="b ghost" href={`/b/${biz.slug}/review`}>Leave a review</Link>
         </div>
         <nav className="tabs" aria-label="On this page">
           {biz.description && <a href="#about">About</a>}
-          {photos.length > 0 && <a href="#photos">Photos</a>}
+          <a href="#photos">Photos{photos.length > 0 ? ` (${photos.length})` : ""}</a>
           {biz.services?.length > 0 && <a href="#services">Services</a>}
           <a href="#contact">Contact</a>
           <a href="#reviews">Reviews</a>
@@ -116,12 +121,14 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
               <p style={{ margin: 0, whiteSpace: "pre-line" }}>{biz.description}</p>
             </section>
           )}
-          {photos.length > 0 && (
-            <section className="card" id="photos">
-              <h2>Photos</h2>
-              <Gallery photos={photos} name={biz.name} />
-            </section>
-          )}
+          <section className="card" id="photos">
+            <h2>Photos</h2>
+            {photos.length > 0 ? (
+              <Gallery photos={photos} name={biz.name} initial={30} />
+            ) : (
+              <p className="muted" style={{ margin: 0 }}>{biz.name} hasn&apos;t added photos yet.</p>
+            )}
+          </section>
           {biz.services?.length > 0 && (
             <section className="card" id="services">
               <h2>Services</h2>

@@ -210,3 +210,6 @@ button.galitem:hover img{transform:scale(1.04)}
 .pic-add{position:absolute;inset:0;border-radius:50%;border:0;background:rgba(109,40,217,.82);color:#fff;font:700 14px/1.2 inherit;font-family:inherit;cursor:pointer;padding:12px;text-align:center}
 .pic-add:hover{background:rgba(91,33,182,.92)}
 .pic-change{position:absolute;right:-2px;bottom:4px;border:3px solid #fff;border-radius:999px;background:var(--ink);color:#fff;font:600 12px inherit;font-family:inherit;padding:5px 10px;cursor:pointer}
+.thumbs{grid-column:2/-1;grid-row:2;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-width:520px}
+.thumbs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block}
+@media (max-width:600px){.thumbs{grid-column:1/-1;grid-row:auto}}
