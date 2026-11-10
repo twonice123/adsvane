@@ -55,10 +55,7 @@ function LocationAsk({ onAllowed }: { onAllowed: () => void }) {
         {state === "off" ? (
           <>
             <h2 id="locask-t">Location is turned off</h2>
-            <p>
-              AdsVane uses your location to show the shops closest to you and how many miles away they are. To turn it on, open your phone&apos;s
-              Settings, turn on Location, and allow it for this website in your browser. Then come back to this page.
-            </p>
+            <p>Turn on Location in your phone settings so we can find shops around you.</p>
             <div className="btns">
               <button
                 type="button"
@@ -77,7 +74,7 @@ function LocationAsk({ onAllowed }: { onAllowed: () => void }) {
         ) : (
           <>
             <h2 id="locask-t">AdsVane wants to use your location</h2>
-            <p>This helps us find shops around you and show how many miles away each one is. Your phone will ask you to allow it next.</p>
+            <p>This helps us find shops around you and tell you how many miles away they are.</p>
             <div className="btns">
               <button
                 type="button"
