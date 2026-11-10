@@ -7,6 +7,7 @@ import { ratingsFor, sponsoredIds } from "@/lib/queries";
 import { Logo } from "@/app/components/Logo";
 import Gallery from "@/app/components/Gallery";
 import { Cover } from "@/app/components/Cover";
+import ProfileTop from "@/app/components/ProfileTop";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,8 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
   const { supabase, biz } = await load(slug);
   if (!biz) notFound();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  const isOwner = !!user && user.id === biz.owner_id;
   const [{ data: reviews }, { data: photoRows }, ratings, sponsored] = await Promise.all([
     supabase.from("reviews").select("*").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(50),
     supabase.from("business_photos").select("id, url, caption").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(1000),
@@ -79,34 +82,17 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
         <Link href="/" style={{ color: "inherit" }}>AdsVane</Link> › <Link href={`/find?where=${encodeURIComponent(biz.city + " " + biz.state)}`} style={{ color: "inherit" }}>{biz.city}, {biz.state}</Link> › {biz.category}
       </p>
       <div className="pfhead">
-        <Cover url={biz.cover_url} focus={biz.cover_focus} label={`${biz.name} cover photo`} />
-        <div className="pfbar">
-          <Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />
-          <div className="pfinfo">
-            <h1>
-              {biz.name}
-              {sponsored.has(biz.id) && <span className="spon">Sponsored</span>}
-            </h1>
-            <div className="meta">
-              <span>{biz.category}</span>
-              {r ? (
-                <a href="#reviews" style={{ color: "inherit", textDecoration: "none" }}>
-                  <span className="stars">{starText(Number(r.rating))}</span> {Number(r.rating).toFixed(1)} · {r.review_count} review{r.review_count === 1 ? "" : "s"}
-                </a>
-              ) : (
-                <span className="muted">No reviews yet</span>
-              )}
-              <span>{biz.city}, {biz.state}</span>
-            </div>
-          </div>
-        </div>
-        <div className="btns pfbtns">
-          {tel && <a className="b" href={`tel:${tel}`}>Call</a>}
-          <a className={tel ? "b ghost" : "b"} href="#contact">Contact</a>
-          <Link className="b ghost" href={`/b/${biz.slug}/review`}>Leave a review</Link>
-        </div>
+        <ProfileTop
+          biz={biz}
+          cover={<Cover url={biz.cover_url} focus={biz.cover_focus} label={`${biz.name} cover photo`} />}
+          picture={<Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />}
+          photoCount={photos.length}
+          rating={r ? Number(r.rating) : null}
+          reviewCount={r ? r.review_count : 0}
+          isOwner={isOwner}
+          sponsored={sponsored.has(biz.id)}
+        />
         <nav className="tabs" aria-label="On this page">
-          {biz.description && <a href="#about">About</a>}
           <a href="#photos">Photos{photos.length > 0 ? ` (${photos.length})` : ""}</a>
           {biz.services?.length > 0 && <a href="#services">Services</a>}
           <a href="#contact">Contact</a>
@@ -116,12 +102,6 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
 
       <div className="grid">
         <div className="stack">
-          {biz.description && (
-            <section className="card" id="about">
-              <h2>About</h2>
-              <p style={{ margin: 0, whiteSpace: "pre-line" }}>{biz.description}</p>
-            </section>
-          )}
           <section className="card" id="photos">
             <h2>Photos</h2>
             {photos.length > 0 ? (

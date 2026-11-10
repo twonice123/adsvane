@@ -12,6 +12,7 @@ import FrameEditor from "./FrameEditor";
 import { Cover } from "@/app/components/Cover";
 import CopyLink from "./CopyLink";
 import ScrollTop from "@/app/components/ScrollTop";
+import ProfileTop from "@/app/components/ProfileTop";
 
 export const metadata = { title: "Dashboard", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -41,32 +42,38 @@ export default async function Manage({ params, searchParams }: { params: Promise
   return (
     <div className="wrap" style={{ marginBottom: 40 }}>
       <div className="dhead">
-        <Cover url={biz.cover_url} focus={biz.cover_focus}>
-          {biz.cover_url ? (
-            <div className="cover-tools">
-              <FrameEditor businessId={id} kind="cover" url={biz.cover_url} focus={biz.cover_focus} />
-              <PhotoUpload businessId={id} kind="cover" label="Change cover photo" className="chip" wrapClass="inl" />
-              <form action={removePhoto}>
-                <input type="hidden" name="business_id" value={id} />
-                <input type="hidden" name="what" value="cover" />
-                <button className="chip" type="submit">Remove</button>
-              </form>
+        <ProfileTop
+          biz={biz}
+          isOwner
+          photoCount={photos.length + (biz.cover_url ? 1 : 0) + (biz.logo_url ? 1 : 0)}
+          rating={r ? Number(r.rating) : null}
+          reviewCount={r ? r.review_count : 0}
+          sponsored={!!running}
+          cover={
+            <Cover url={biz.cover_url} focus={biz.cover_focus}>
+              {biz.cover_url ? (
+                <div className="cover-tools">
+                  <FrameEditor businessId={id} kind="cover" url={biz.cover_url} focus={biz.cover_focus} />
+                  <PhotoUpload businessId={id} kind="cover" label="Change cover photo" className="chip" wrapClass="inl" />
+                  <form action={removePhoto}>
+                    <input type="hidden" name="business_id" value={id} />
+                    <input type="hidden" name="what" value="cover" />
+                    <button className="chip" type="submit">Remove</button>
+                  </form>
+                </div>
+              ) : (
+                <PhotoUpload businessId={id} kind="cover" label="+ Add cover photo" className="cover-add" wrapClass="center" />
+              )}
+            </Cover>
+          }
+          picture={
+            <div className="pfpic">
+              <Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />
+              {biz.logo_url && <FrameEditor businessId={id} kind="logo" url={biz.logo_url} focus={biz.logo_focus} className="pic-adjust" />}
+              <PhotoUpload businessId={id} kind="logo" label={biz.logo_url ? "Change" : "Add profile picture"} className={biz.logo_url ? "pic-change" : "pic-add"} wrapClass="pic-btn" />
             </div>
-          ) : (
-            <PhotoUpload businessId={id} kind="cover" label="+ Add cover photo" className="cover-add" wrapClass="center" />
-          )}
-        </Cover>
-        <div className="pfbar">
-          <div className="pfpic">
-            <Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />
-            {biz.logo_url && <FrameEditor businessId={id} kind="logo" url={biz.logo_url} focus={biz.logo_focus} className="pic-adjust" />}
-            <PhotoUpload businessId={id} kind="logo" label={biz.logo_url ? "Change" : "Add profile picture"} className={biz.logo_url ? "pic-change" : "pic-add"} wrapClass="pic-btn" />
-          </div>
-          <div className="pfinfo">
-            <p className="eyebrow">Your dashboard</p>
-            <h1>{biz.name}</h1>
-          </div>
-        </div>
+          }
+        />
       </div>
       {sp.new && <ScrollTop />}
       {sp.new && <p className="ok">Your free listing is live! Tap the cover to add a cover photo, and tap the circle to add your profile picture.</p>}
@@ -74,7 +81,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
       {sp.promo === "stopped" && <p className="note">Promotion stopped. Your free listing still shows in search.</p>}
       <div className="btns" style={{ margin: "16px 0" }}>
         <Link className="b" href={`/b/${biz.slug}`}>View my page</Link>
-        <Link className="b ghost" href={`/dashboard/${id}/edit`}>Edit my page</Link>
+        <Link className="b ghost" href={`/dashboard/${id}/edit`}>Hours, services &amp; social links</Link>
         <Link className="b ghost" href="/dashboard">All my businesses</Link>
       </div>
 

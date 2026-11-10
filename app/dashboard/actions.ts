@@ -154,3 +154,51 @@ export async function stopPromotion(fd: FormData) {
   revalidatePath("/find");
   redirect(`/dashboard/${businessId}?promo=stopped`);
 }
+
+export type ProfileState = { error?: string; ok?: number };
+
+// The quick "Edit profile" form at the top of a business page.
+export async function saveProfile(_prev: ProfileState, fd: FormData): Promise<ProfileState> {
+  const { supabase, user } = await requireUser();
+  const id = str(fd, "id", 40);
+  const name = str(fd, "name", 120);
+  const category = str(fd, "category");
+  const city = str(fd, "city", 80).replace(/[\s,]+$/, "");
+  const state = str(fd, "state", 2).toUpperCase();
+  if (!name) return { error: "Enter your business name." };
+  if (!CATEGORIES.includes(category)) return { error: "Pick a category." };
+  if (!city) return { error: "Enter your city." };
+  if (!STATES[state]) return { error: "Pick your state." };
+  const websiteRaw = str(fd, "website", 300);
+  const website = url(websiteRaw);
+  if (websiteRaw && !website) return { error: "That website address doesn't look right." };
+  const contact_email = str(fd, "contact_email", 200).toLowerCase() || null;
+  if (contact_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contact_email)) return { error: "That email address doesn't look right." };
+  const phone = str(fd, "phone", 30) || null;
+  if (phone && phone.replace(/\D/g, "").length < 7) return { error: "That phone number doesn't look right." };
+
+  const { data, error } = await supabase
+    .from("businesses")
+    .update({
+      name,
+      category,
+      description: str(fd, "description", 2000) || null,
+      website,
+      phone,
+      contact_email,
+      street: str(fd, "street", 120).replace(/[\s,]+$/, "") || null,
+      city,
+      state,
+      zip: str(fd, "zip", 10) || null,
+      show_address: fd.get("show_address") === "on",
+    })
+    .eq("id", id)
+    .eq("owner_id", user.id)
+    .select("slug")
+    .maybeSingle();
+  if (error || !data) return { error: "Couldn't save. Please try again." };
+  revalidatePath(`/dashboard/${id}`);
+  revalidatePath(`/b/${data.slug}`);
+  revalidatePath("/find");
+  return { ok: Date.now() };
+}
