@@ -315,3 +315,18 @@ button.galitem:hover img{transform:scale(1.04)}
 .lnk:disabled{color:var(--ink-3)}
 .lnk-bad{color:var(--bad)}
 .fe-back{z-index:80}
+
+/* ---- one-box search ---- */
+.search.one input{flex:1 1 260px;font-size:17px;padding:14px 16px}
+.search.one button{flex:0 0 auto;padding:14px 22px;font:600 16px/1.2 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.search.one button:disabled{opacity:.75}
+.quick{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;scrollbar-width:none}
+.chip2{flex:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font:600 14px/1.2 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.chip2:first-child{background:var(--brand-2);border-color:#d9c8ff;color:var(--brand)}
+.chip2:hover{border-color:var(--brand)}
+.found{margin:10px 0 12px;font-size:15px}
+.mi{color:var(--brand)}
+.raddr{display:inline-block;margin-top:2px;font-size:14px;color:#4c3a99;text-decoration:none}
+.raddr:hover{text-decoration:underline}
+.row .go{display:flex;flex-direction:column;gap:8px}
+@media (max-width:600px){.search.one button{flex:1 1 100%}.row .go{flex-direction:row}.row .go .b{flex:1}}

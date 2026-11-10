@@ -2,6 +2,13 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { addressText, locate } from "@/lib/geo";
+
+// The map point for an address, saved so search can show miles.
+async function place(a: { street: string | null; city: string; state: string; zip: string | null }) {
+  const pt = await locate(a);
+  return { lat: pt?.lat ?? null, lng: pt?.lng ?? null, located_from: pt ? addressText(a) : null };
+}
 import { AMENITY_LABEL, CATEGORIES, DAYS, SOCIAL, STATES, slugify, socialLink } from "@/lib/data";
 
 export type FormState = { error?: string; saved?: boolean };
@@ -91,6 +98,7 @@ export async function saveBusiness(_prev: FormState, fd: FormData): Promise<Form
     social,
     services,
   };
+  Object.assign(row, await place(row));
 
   if (id) {
     const { error } = await supabase.from("businesses").update(row).eq("id", id).eq("owner_id", user.id);
@@ -177,9 +185,7 @@ export async function saveProfile(_prev: ProfileState, fd: FormData): Promise<Pr
   const phone = str(fd, "phone", 30) || null;
   if (phone && phone.replace(/\D/g, "").length < 7) return { error: "That phone number doesn't look right." };
 
-  const { data, error } = await supabase
-    .from("businesses")
-    .update({
+  const prow = {
       name,
       category,
       description: str(fd, "description", 2000) || null,
@@ -191,7 +197,10 @@ export async function saveProfile(_prev: ProfileState, fd: FormData): Promise<Pr
       state,
       zip: str(fd, "zip", 10) || null,
       show_address: fd.get("show_address") === "on",
-    })
+  };
+  const { data, error } = await supabase
+    .from("businesses")
+    .update({ ...prow, ...(await place(prow)) })
     .eq("id", id)
     .eq("owner_id", user.id)
     .select("slug")

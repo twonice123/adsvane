@@ -18,6 +18,9 @@ export type Business = {
   cover_focus: string | null;
   logo_focus: string | null;
   contact_email: string | null;
+  lat: number | null;
+  lng: number | null;
+  located_from: string | null;
   hours: Record<string, { open: string; close: string } | null>;
   amenities: string[];
   social: Record<string, string>;
