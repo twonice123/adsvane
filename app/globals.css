@@ -331,10 +331,18 @@ button.galitem:hover img{transform:scale(1.04)}
 .row .go{display:flex;flex-direction:column;gap:8px}
 @media (max-width:600px){.search.one button{flex:1 1 100%}.row .go{flex-direction:row}.row .go .b{flex:1}}
 /* location request */
-.locask{position:fixed;inset:0;z-index:90;background:rgba(8,6,14,.55);display:flex;align-items:center;justify-content:center;padding:16px}
-.locask-box{background:#fff;border-radius:18px;padding:24px 22px 20px;width:min(420px,100%);text-align:center;box-shadow:0 20px 50px rgba(13,11,18,.3)}
-.locask-ic{width:56px;height:56px;border-radius:50%;background:var(--brand-2);display:grid;place-items:center;font-size:28px;margin:0 auto 10px}
-.locask h2{margin:0 0 8px;font:700 20px/1.3 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
-.locask p{margin:0 0 16px;color:var(--ink-2)}
-.locask .btns{display:flex;flex-direction:column;gap:8px}
-.locask .b{width:100%}
+.locask{position:fixed;inset:0;z-index:90;background:rgba(8,6,14,.62);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px;animation:lk-in .2s ease-out}
+.locask-box{position:relative;overflow:hidden;color:#fff;border-radius:22px;padding:28px 24px 22px;width:min(400px,100%);text-align:center;background:radial-gradient(120% 90% at 50% 0%,#5b21b6 0%,#2e1065 55%,#140b24 100%);border:1px solid rgba(196,166,255,.25);box-shadow:0 24px 60px rgba(13,11,18,.45)}
+.locask-ic{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);display:grid;place-items:center;margin:0 auto 14px;color:#e9ddff}
+.locask h2{margin:0 0 8px;font:700 21px/1.3 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff}
+.locask p{margin:0 0 20px;color:#ddd0f7;font-size:16px;line-height:1.5}
+.locask .btns{display:flex;flex-direction:column;gap:10px}
+.locask .b{width:100%;padding:13px 18px;font:600 16px/1.2 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;border-radius:12px}
+.locask .b:not(.ghost){background:#fff;color:#2e1065}
+.locask .b:not(.ghost):hover{background:#f3edff}
+.locask .b.ghost{background:transparent;color:#e9ddff;border:1px solid rgba(233,221,255,.35)}
+.locask .b.ghost:hover{background:rgba(255,255,255,.08)}
+.locask .b:disabled{opacity:.8}
+@media (max-width:600px){.locask{align-items:flex-end;padding:0}.locask-box{width:100%;border-radius:22px 22px 0 0;padding-bottom:calc(22px + env(safe-area-inset-bottom))}}
+@keyframes lk-in{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.locask{animation:none}}

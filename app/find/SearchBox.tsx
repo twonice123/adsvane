@@ -51,11 +51,13 @@ function LocationAsk({ onAllowed }: { onAllowed: () => void }) {
   return (
     <div className="locask" role="dialog" aria-modal="true" aria-labelledby="locask-t">
       <div className="locask-box">
-        <div className="locask-ic" aria-hidden="true">📍</div>
+        <div className="locask-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z" /><circle cx="12" cy="10" r="2.6" /></svg>
+        </div>
         {state === "off" ? (
           <>
-            <h2 id="locask-t">Location is turned off</h2>
-            <p>Turn on Location in your phone settings so we can find shops around you.</p>
+            <h2 id="locask-t">Location is off</h2>
+            <p>Turn on Location in your phone settings to see shops around you and how far away they are.</p>
             <div className="btns">
               <button
                 type="button"
@@ -73,8 +75,8 @@ function LocationAsk({ onAllowed }: { onAllowed: () => void }) {
           </>
         ) : (
           <>
-            <h2 id="locask-t">AdsVane wants to use your location</h2>
-            <p>This helps us find shops around you and tell you how many miles away they are.</p>
+            <h2 id="locask-t">Allow AdsVane to use your location</h2>
+            <p>We use your location to find shops around you and show how many miles away they are.</p>
             <div className="btns">
               <button
                 type="button"
