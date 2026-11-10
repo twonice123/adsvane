@@ -8,7 +8,6 @@ import { Logo } from "@/app/components/Logo";
 import { stopPromotion } from "../actions";
 import { removePhoto } from "../photo-actions";
 import PhotoUpload from "./photos/PhotoUpload";
-import FrameEditor from "./FrameEditor";
 import { Cover } from "@/app/components/Cover";
 import CopyLink from "./CopyLink";
 import ScrollTop from "@/app/components/ScrollTop";
@@ -49,34 +48,12 @@ export default async function Manage({ params, searchParams }: { params: Promise
           rating={r ? Number(r.rating) : null}
           reviewCount={r ? r.review_count : 0}
           sponsored={!!running}
-          cover={
-            <Cover url={biz.cover_url} focus={biz.cover_focus}>
-              {biz.cover_url ? (
-                <div className="cover-tools">
-                  <FrameEditor businessId={id} kind="cover" url={biz.cover_url} focus={biz.cover_focus} />
-                  <PhotoUpload businessId={id} kind="cover" label="Change cover photo" className="chip" wrapClass="inl" />
-                  <form action={removePhoto}>
-                    <input type="hidden" name="business_id" value={id} />
-                    <input type="hidden" name="what" value="cover" />
-                    <button className="chip" type="submit">Remove</button>
-                  </form>
-                </div>
-              ) : (
-                <PhotoUpload businessId={id} kind="cover" label="+ Add cover photo" className="cover-add" wrapClass="center" />
-              )}
-            </Cover>
-          }
-          picture={
-            <div className="pfpic">
-              <Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />
-              {biz.logo_url && <FrameEditor businessId={id} kind="logo" url={biz.logo_url} focus={biz.logo_focus} className="pic-adjust" />}
-              <PhotoUpload businessId={id} kind="logo" label={biz.logo_url ? "Change" : "Add profile picture"} className={biz.logo_url ? "pic-change" : "pic-add"} wrapClass="pic-btn" />
-            </div>
-          }
+          cover={<Cover url={biz.cover_url} focus={biz.cover_focus} />}
+          picture={<Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />}
         />
       </div>
       {sp.new && <ScrollTop />}
-      {sp.new && <p className="ok">Your free listing is live! Tap the cover to add a cover photo, and tap the circle to add your profile picture.</p>}
+      {sp.new && <p className="ok">Your free listing is live! Tap Edit profile to add your profile picture, cover photo and bio.</p>}
       {sp.promo === "started" && <p className="ok">Your promotion is running. Your profile now shows as Sponsored.</p>}
       {sp.promo === "stopped" && <p className="note">Promotion stopped. Your free listing still shows in search.</p>}
       <div className="btns" style={{ margin: "16px 0" }}>

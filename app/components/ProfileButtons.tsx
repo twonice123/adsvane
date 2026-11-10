@@ -4,6 +4,11 @@ import { useRouter } from "next/navigation";
 import { CATEGORIES, STATES } from "@/lib/data";
 import { saveProfile, type ProfileState } from "@/app/dashboard/actions";
 import AddressInput from "./AddressInput";
+import { Logo } from "./Logo";
+import { Cover } from "./Cover";
+import PhotoUpload from "@/app/dashboard/[id]/photos/PhotoUpload";
+import FrameEditor from "@/app/dashboard/[id]/FrameEditor";
+import { removePhoto } from "@/app/dashboard/photo-actions";
 
 export type ProfileInfo = {
   id: string;
@@ -18,11 +23,16 @@ export type ProfileInfo = {
   state: string;
   zip: string | null;
   show_address: boolean;
+  logo_url: string | null;
+  logo_focus: string | null;
+  cover_url: string | null;
+  cover_focus: string | null;
 };
 
 function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    // Escape closes this sheet, unless the photo framing window is open on top of it.
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !document.querySelector(".fe-back") && onClose();
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -39,6 +49,42 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
           <h2>{title}</h2>
         </div>
         {children}
+      </div>
+    </div>
+  );
+}
+
+// Profile picture and cover photo, at the top of Edit profile.
+function PhotoSection({ p }: { p: ProfileInfo }) {
+  return (
+    <div className="ef-pics">
+      <Cover url={p.cover_url} focus={p.cover_focus} />
+      <div className="ef-avatar">
+        <Logo name={p.name} url={p.logo_url} size="xl" focus={p.logo_focus} />
+      </div>
+      <div className="ef-picrow">
+        <span className="ef-pl">Profile picture</span>
+        <PhotoUpload businessId={p.id} kind="logo" label={p.logo_url ? "Change" : "Add"} className="lnk" wrapClass="inl2" />
+        {p.logo_url && <FrameEditor businessId={p.id} kind="logo" url={p.logo_url} focus={p.logo_focus} className="lnk" />}
+        {p.logo_url && (
+          <form action={removePhoto}>
+            <input type="hidden" name="business_id" value={p.id} />
+            <input type="hidden" name="what" value="logo" />
+            <button className="lnk lnk-bad" type="submit">Remove</button>
+          </form>
+        )}
+      </div>
+      <div className="ef-picrow">
+        <span className="ef-pl">Cover photo</span>
+        <PhotoUpload businessId={p.id} kind="cover" label={p.cover_url ? "Change" : "Add"} className="lnk" wrapClass="inl2" />
+        {p.cover_url && <FrameEditor businessId={p.id} kind="cover" url={p.cover_url} focus={p.cover_focus} className="lnk" />}
+        {p.cover_url && (
+          <form action={removePhoto}>
+            <input type="hidden" name="business_id" value={p.id} />
+            <input type="hidden" name="what" value="cover" />
+            <button className="lnk lnk-bad" type="submit">Remove</button>
+          </form>
+        )}
       </div>
     </div>
   );
@@ -163,6 +209,7 @@ export default function ProfileButtons({
 
       {open === "edit" && (
         <Sheet title="Edit profile" onClose={close}>
+          <PhotoSection p={info} />
           <EditForm p={info} onDone={close} />
         </Sheet>
       )}

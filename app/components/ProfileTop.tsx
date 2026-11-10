@@ -85,6 +85,10 @@ export default async function ProfileTop({
           state: biz.state,
           zip: biz.zip,
           show_address: biz.show_address,
+          logo_url: biz.logo_url,
+          logo_focus: biz.logo_focus,
+          cover_url: biz.cover_url,
+          cover_focus: biz.cover_focus,
         }}
       />
     </div>
