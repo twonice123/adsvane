@@ -38,7 +38,6 @@ export default async function Directory({ searchParams }: { searchParams: Promis
   const { data, error } = await supabase.from("businesses").select("*").order("created_at", { ascending: false }).limit(1000);
   const all = (data as Business[]) || [];
   const parsed = parseSearch(raw, all);
-  const { nearMe } = parsed;
   let { what, place } = parsed;
   // A city we have no listings in yet, typed without "in" ("braiding shop Austin"):
   // if the last words match no business at all, treat them as the place.
@@ -94,11 +93,12 @@ export default async function Directory({ searchParams }: { searchParams: Promis
       origin = center;
     } else pool = inCity;
     placeMiss = pool.length === 0;
-  } else if (nearMe && me) {
+  } else if (me) {
+    // No place typed: show what's near the visitor, closest first.
     origin = me;
     const close = pool.filter((b) => pts.has(b.id) && miles(me, pts.get(b.id)!) <= NEAR_MILES);
     if (close.length) pool = close;
-  } else if (me) origin = me;
+  }
 
   const dist = new Map<string, number>();
   if (me) for (const b of pool) if (pts.has(b.id)) dist.set(b.id, miles(me, pts.get(b.id)!));
@@ -125,14 +125,16 @@ export default async function Directory({ searchParams }: { searchParams: Promis
   const sorted = [...pool.filter((b) => sponsored.has(b.id)).sort(byDistance), ...pool.filter((b) => !sponsored.has(b.id)).sort(byDistance)];
 
   const heading = raw
-    ? `${sorted.length} result${sorted.length === 1 ? "" : "s"}${place ? ` in ${placeLabel}` : nearMe ? " near you" : ""}`
-    : "";
+    ? `${sorted.length} result${sorted.length === 1 ? "" : "s"}${place ? ` in ${placeLabel}` : me ? " near you" : ""}`
+    : me && sorted.length
+      ? "Shops near you"
+      : "";
 
   return (
     <div className="wrap">
       <h1>Find local services you can trust</h1>
-      <p className="sub">Type what you need and where. For example &ldquo;braiding shop near me&rdquo; or &ldquo;barber Fort Worth&rdquo;.</p>
-      <SearchBox defaultValue={raw} exact={!!exactSpot} />
+      <p className="sub">Type what you need. We show the closest shops first. Add a city to look somewhere else, like &ldquo;braiding Fort Worth&rdquo;.</p>
+      <SearchBox defaultValue={raw} />
 
       {sp.loc === "off" && !exactSpot && (
         <p className="note" role="alert">
