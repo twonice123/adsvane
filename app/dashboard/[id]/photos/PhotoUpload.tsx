@@ -68,6 +68,8 @@ export default function PhotoUpload({
   async function send(picked: File[], text: string) {
     setBusy(true);
     // Send gallery photos a few at a time so each request stays small.
+    const postId = picked.length > 1 && kind === "gallery" ? crypto.randomUUID() : "";
+    let start = 0;
     const batches: File[][] = [];
     for (let i = 0; i < picked.length; i += 4) batches.push(picked.slice(i, i + 4));
     for (const batch of batches) {
@@ -75,6 +77,11 @@ export default function PhotoUpload({
       b.set("business_id", businessId);
       b.set("kind", kind);
       if (text.trim()) b.set("caption", text.trim());
+      if (postId) {
+        b.set("post_id", postId);
+        b.set("start", String(start));
+      }
+      start += batch.length;
       for (const f of batch) b.append("file", await shrink(f, max));
       let r: PhotoState;
       try {
@@ -85,6 +92,7 @@ export default function PhotoUpload({
       setState(r);
       if (r.error) break;
     }
+    if (kind === "gallery") setState((st) => (st.error ? st : { ok: picked.length > 1 ? `Posted ${picked.length} photos as one post.` : "Posted." }));
     setBusy(false);
     router.refresh();
   }
@@ -117,7 +125,7 @@ export default function PhotoUpload({
               autoFocus
             />
             <p className="muted np-hint">
-              {pending2.files.length > 1 ? `${pending2.files.length} photos. Each one gets this caption. ` : ""}
+              {pending2.files.length > 1 ? `${pending2.files.length} photos in one post. People swipe to see them all. ` : ""}
               {caption.length}/2200
             </p>
             <button

@@ -3,11 +3,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ago } from "@/lib/time";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { addComment, deletePhoto, editPhoto, loadComments, noteShare, removeComment, toggle, type Comment } from "@/app/post-actions";
+import { addComment, deletePhoto, editPhoto, loadComments, loadViewers, noteShare, removeComment, toggle, type Comment, type Viewer } from "@/app/post-actions";
 
 export type Post = {
   id: string;
   url: string;
+  /** every photo in the post; people swipe through them */
+  pics: string[];
+  views: number;
   text: string | null;
   hidden?: boolean;
   likes: number;
@@ -37,6 +40,12 @@ const Icon = {
   comment: () => (
     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12z" /></svg>
   ),
+  eye: () => (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+  ),
+  stack: () => (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 3h11a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" /><path d="M4 7v12a2 2 0 0 0 2 2h12" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
+  ),
   dots: () => (
     <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
   ),
@@ -65,7 +74,7 @@ export default function Gallery({
   const [open, setOpen] = useState<number | null>(null);
   const [all, setAll] = useState(false);
   const [mine, setMine] = useState<Record<string, Partial<Post>>>({});
-  const [menu, setMenu] = useState<"" | "menu" | "edit" | "delete" | "login">("");
+  const [menu, setMenu] = useState<"" | "menu" | "edit" | "delete" | "login" | "views">("");
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
@@ -74,6 +83,8 @@ export default function Gallery({
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const replyBox = useRef<HTMLTextAreaElement>(null);
+  const [slide, setSlide] = useState(0);
+  const [viewers, setViewers] = useState<Viewer[] | null>(null);
 
   const list = photos.map((p) => ({ ...p, ...mine[p.id] }));
   const n = list.length;
@@ -99,6 +110,21 @@ export default function Gallery({
   // Load the comments for the photo that's open.
   const curId = cur?.id;
   const curSocial = cur?.social;
+  useEffect(() => {
+    setSlide(0);
+    if (!curId || !curSocial) return;
+    // Count this view (once per person or browser).
+    let key = "";
+    try {
+      key = localStorage.getItem("av_vk") || "";
+      if (!key) localStorage.setItem("av_vk", (key = crypto.randomUUID()));
+    } catch {}
+    fetch("/api/view", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ photo: curId, key }) })
+      .then((r) => r.json())
+      .then((x) => typeof x.views === "number" && setMine((m) => ({ ...m, [curId]: { ...m[curId], views: x.views } })))
+      .catch(() => {});
+  }, [curId, curSocial]);
+
   useEffect(() => {
     setTalk(null);
     setReply("");
@@ -202,14 +228,16 @@ export default function Gallery({
       ) : (
         <div className="gal">
           {shown.map((p, i) => (
-            <button key={p.id} type="button" className={`galitem${p.hidden ? " is-hidden" : ""}`} onClick={() => setOpen(i)} aria-label={`Open photo ${i + 1} of ${n}`}>
+            <button key={p.id} type="button" className={`galitem${p.hidden ? " is-hidden" : ""}`} onClick={() => setOpen(i)} aria-label={`Open post ${i + 1} of ${n}`}>
               <img src={p.url} alt={p.text || `${p.biz.name} photo ${i + 1}`} loading="lazy" />
               {p.hidden && <span className="galtag">Hidden</span>}
-              {owner && p.social && (p.likes > 0 || p.comments > 0 || p.reposts > 0) && (
-                <span className="galstats" aria-label={`${p.likes} likes, ${p.comments} comments, ${p.reposts} reposts`}>
-                  {p.likes > 0 && <span>♥ {p.likes}</span>}
-                  {p.comments > 0 && <span>💬 {p.comments}</span>}
-                  {p.reposts > 0 && <span>↻ {p.reposts}</span>}
+              {p.pics.length > 1 && <span className="galmulti" aria-label={`${p.pics.length} photos`}>{Icon.stack()}</span>}
+              {p.social && (
+                <span className="galstats" aria-label={`${p.views} views${owner ? `, ${p.likes} likes, ${p.comments} comments, ${p.reposts} reposts` : ""}`}>
+                  <span className="galeye">{Icon.eye()} {p.views}</span>
+                  {owner && p.likes > 0 && <span>♥ {p.likes}</span>}
+                  {owner && p.comments > 0 && <span>💬 {p.comments}</span>}
+                  {owner && p.reposts > 0 && <span>↻ {p.reposts}</span>}
                 </span>
               )}
             </button>
@@ -218,7 +246,7 @@ export default function Gallery({
       )}
       {n > initial && !all && (
         <p style={{ margin: "14px 0 0" }}>
-          <button type="button" className="b ghost" onClick={() => setAll(true)}>See all {n} photos</button>
+          <button type="button" className="b ghost" onClick={() => setAll(true)}>See all {n} posts</button>
         </p>
       )}
 
@@ -242,13 +270,29 @@ export default function Gallery({
               onTouchEnd={(e) => {
                 if (touch.current === null) return;
                 const dx = e.changedTouches[0].clientX - touch.current;
-                if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
                 touch.current = null;
+                if (Math.abs(dx) < 40) return;
+                const step = dx < 0 ? 1 : -1;
+                const last = cur.pics.length - 1;
+                if (last > 0 && slide + step >= 0 && slide + step <= last) setSlide(slide + step);
+                else if (last === 0) go(step);
               }}
               onDoubleClick={() => cur.social && !cur.liked && flip("like")}
             >
-              <img src={cur.url} alt={cur.text || `${cur.biz.name} photo`} />
+              <img key={cur.pics[slide] || cur.url} src={cur.pics[slide] || cur.url} alt={cur.text || `${cur.biz.name} photo`} />
+              {cur.pics.length > 1 && (
+                <>
+                  <span className="pv-n">{slide + 1}/{cur.pics.length}</span>
+                  {slide > 0 && <button type="button" className="pv-sl prev" onClick={() => setSlide(slide - 1)} aria-label="Previous picture">‹</button>}
+                  {slide < cur.pics.length - 1 && <button type="button" className="pv-sl next" onClick={() => setSlide(slide + 1)} aria-label="Next picture">›</button>}
+                </>
+              )}
             </div>
+            {cur.pics.length > 1 && (
+              <div className="pv-dots" aria-hidden="true">
+                {cur.pics.map((_, i) => <span key={i} className={i === slide ? "on" : ""} />)}
+              </div>
+            )}
             {cur.hidden && <p className="pv-hidden">Hidden from your profile. Only you can see it.</p>}
             <div className="pv-acts">
               {cur.social && (
@@ -263,11 +307,31 @@ export default function Gallery({
                 <button type="button" className="pv-ic pv-right" aria-pressed={cur.saved} aria-label={cur.saved ? "Remove from saved" : "Save"} onClick={() => flip("save")}>{Icon.save(cur.saved)}</button>
               )}
             </div>
-            {cur.social && (cur.likes > 0 || cur.reposts > 0) && (
+            {cur.social && (cur.likes > 0 || cur.reposts > 0 || cur.views > 0) && (
               <p className="pv-count">
-                {cur.likes > 0 && <b>{cur.likes} like{cur.likes === 1 ? "" : "s"}</b>}
-                {cur.likes > 0 && cur.reposts > 0 && " · "}
-                {cur.reposts > 0 && <span>{cur.reposts} repost{cur.reposts === 1 ? "" : "s"}</span>}
+                {[
+                  cur.likes > 0 && <b key="l">{cur.likes} like{cur.likes === 1 ? "" : "s"}</b>,
+                  cur.reposts > 0 && <span key="r">{cur.reposts} repost{cur.reposts === 1 ? "" : "s"}</span>,
+                  cur.views > 0 &&
+                    (owner ? (
+                      <button
+                        key="v"
+                        type="button"
+                        className="lnk pv-views"
+                        onClick={async () => {
+                          setViewers(null);
+                          setMenu("views");
+                          setViewers(await loadViewers(cur.id));
+                        }}
+                      >
+                        {cur.views} view{cur.views === 1 ? "" : "s"}
+                      </button>
+                    ) : (
+                      <span key="v">{cur.views} view{cur.views === 1 ? "" : "s"}</span>
+                    )),
+                ]
+                  .filter(Boolean)
+                  .flatMap((x, i) => (i ? [" · ", x] : [x]))}
               </p>
             )}
             {cur.text && (
@@ -376,6 +440,27 @@ export default function Gallery({
                       {busy ? "Deleting…" : "Delete"}
                     </button>
                     <button type="button" className="muted" onClick={() => setMenu("")}>Cancel</button>
+                  </>
+                )}
+                {menu === "views" && (
+                  <>
+                    <h3>Viewed by</h3>
+                    {viewers === null ? (
+                      <p className="sub">Loading…</p>
+                    ) : (
+                      <>
+                        <p className="sub">
+                          {cur.views} view{cur.views === 1 ? "" : "s"}
+                          {viewers.some((v) => !v.signed_in) && ` · ${viewers.filter((v) => !v.signed_in).length} by visitors who aren't signed in`}
+                        </p>
+                        <ul className="pv-vl">
+                          {viewers.filter((v) => v.signed_in).map((v, i) => (
+                            <li key={i}><span className="pv-av">{v.name.slice(0, 1).toUpperCase()}</span><b>{v.name}</b><small>{ago(v.viewed_at)}</small></li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    <button type="button" className="muted" onClick={() => setMenu("")}>Close</button>
                   </>
                 )}
                 {menu === "login" && (

@@ -44,7 +44,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
   const isOwner = !!user && user.id === biz.owner_id;
   const [{ data: reviews }, { data: photoRows }, ratings, sponsored] = await Promise.all([
     supabase.from("reviews").select("*").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(50),
-    supabase.from("business_photos").select("id, url, caption, post_text").eq("business_id", biz.id).eq("hidden", false).order("created_at", { ascending: false }).limit(1000),
+    supabase.from("business_photos").select("id, url, caption, post_text, post_id, position, view_count").eq("business_id", biz.id).eq("hidden", false).order("created_at", { ascending: false }).limit(1000),
     ratingsFor(supabase, [biz.id]),
     sponsoredIds(supabase, [biz.id]),
   ]);
@@ -54,7 +54,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
   const mapQ = encodeURIComponent(biz.show_address && biz.street ? address : `${biz.name} ${biz.city} ${biz.state}`);
   const amen = biz.amenities.filter((a) => AMENITY_LABEL[a]);
   const social = SOCIAL.map((s) => ({ ...s, link: socialLink(s.key, biz.social?.[s.key]) })).filter((s): s is typeof s & { link: string } => !!s.link);
-  const workPhotos = (photoRows as Pick<Photo, "id" | "url" | "caption" | "post_text">[]) || [];
+  const workPhotos = (photoRows as Pick<Photo, "id" | "url" | "caption" | "post_text" | "post_id" | "position" | "view_count">[]) || [];
   // Everything the business has posted shows under Photos, like a social page.
   const photos = [
     ...workPhotos,
@@ -89,7 +89,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
           biz={biz}
           cover={<Cover url={biz.cover_url} focus={biz.cover_focus} label={`${biz.name} cover photo`} />}
           picture={<Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />}
-          photoCount={photos.length}
+          photoCount={posts.filter((p) => p.social).length}
           rating={r ? Number(r.rating) : null}
           reviewCount={r ? r.review_count : 0}
           isOwner={isOwner}

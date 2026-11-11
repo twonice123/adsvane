@@ -47,7 +47,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
         <ProfileTop
           biz={biz}
           isOwner
-          photoCount={photos.filter((p) => !p.hidden).length + (biz.cover_url ? 1 : 0) + (biz.logo_url ? 1 : 0)}
+          photoCount={posts.filter((p) => !p.hidden).length}
           rating={r ? Number(r.rating) : null}
           reviewCount={r ? r.review_count : 0}
           sponsored={!!running}

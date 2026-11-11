@@ -63,7 +63,15 @@ export async function uploadPhoto(_prev: PhotoState, fd: FormData): Promise<Phot
 
     if (kind === "gallery") {
       const post_text = String(fd.get("caption") ?? "").trim().slice(0, 2200) || null;
-      const { error } = await supabase.from("business_photos").insert({ business_id: biz.id, path, url, post_text });
+      const postId = String(fd.get("post_id") ?? "");
+      const pos = Number(fd.get("start") ?? 0) + added;
+      const { error } = await supabase.from("business_photos").insert({
+        business_id: biz.id,
+        path,
+        url,
+        post_text,
+        ...(/^[0-9a-f-]{36}$/i.test(postId) ? { post_id: postId, position: Math.min(Math.max(pos, 0), 999) } : {}),
+      });
       if (error) {
         await supabase.storage.from(PHOTO_BUCKET).remove([path]);
         return { error: "Couldn't save the photo. Please try again." };

@@ -378,7 +378,7 @@ button.galitem:hover img{transform:scale(1.04)}
 .pv-back .lb-nav{z-index:2}
 .pv-sheet-back{position:fixed;inset:0;z-index:65;background:rgba(8,6,14,.45);display:flex;align-items:flex-end;justify-content:center}
 .pv-sheet{background:#fff;width:min(560px,100%);border-radius:18px 18px 0 0;padding:10px 16px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;animation:pvup .18s ease-out}
-@keyframes pvup{from{transform:translateY(40px);opacity:0}}
+@keyframes pvup{from{transform:translateY(40px)}}
 .pv-sheet>button{background:none;border:0;border-bottom:1px solid var(--line);padding:15px 4px;font:600 16px system-ui,sans-serif;font-family:inherit;color:var(--ink);cursor:pointer;text-align:center}
 .pv-sheet>button:last-child{border-bottom:0}
 .pv-sheet>button.bad{color:var(--bad)}
@@ -440,3 +440,31 @@ button.galitem:hover img{transform:scale(1.04)}
 .me-msg{position:absolute;right:16px;margin-top:70px;font-size:13px}
 .navbar-prog{position:fixed;top:0;left:0;height:3px;z-index:100;background:linear-gradient(90deg,#c4a6ff,var(--accent));box-shadow:0 0 8px #a78bfa;animation:navp 8s cubic-bezier(.1,.7,.2,1) forwards}
 @keyframes navp{from{width:0}to{width:92%}}
+/* Posts: taller tiles like a social grid, carousel, views */
+#photos .gal,.narrow2 .gal{gap:3px}
+#photos .galitem,.narrow2 .galitem{aspect-ratio:3/4;border-radius:4px}
+@media (max-width:600px){#photos.card{padding-left:0;padding-right:0;border-left:0;border-right:0;border-radius:0}#photos.card>h2,#photos.card>p,#photos.card>.upl{margin-left:16px;margin-right:16px}#photos .galitem{border-radius:0}}
+.galmulti{position:absolute;top:6px;right:6px;color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));line-height:0}
+.galstats{justify-content:flex-start;gap:10px;padding:16px 8px 6px}
+.galeye{display:inline-flex;align-items:center;gap:4px}
+.pv-img{position:relative}
+.pv-n{position:absolute;top:10px;right:10px;background:rgba(13,11,18,.7);color:#fff;font-size:12.5px;font-weight:700;padding:3px 9px;border-radius:999px}
+.pv-sl{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;border:0;background:rgba(255,255,255,.85);color:#0d0b12;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0 0 3px}
+.pv-sl.prev{left:8px}.pv-sl.next{right:8px}
+.pv-dots{display:flex;justify-content:center;gap:5px;padding:8px 0 0}
+.pv-dots span{width:6px;height:6px;border-radius:50%;background:#d6d1df}
+.pv-dots span.on{background:var(--brand)}
+.pv-views{font:inherit;color:var(--ink);font-weight:600;padding:0;text-decoration:underline;text-underline-offset:3px}
+.pv-vl{list-style:none;margin:0 0 6px;padding:0;max-height:50vh;overflow:auto}
+.pv-vl li{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line)}
+.pv-vl li b{flex:1}
+.pv-vl small{color:var(--ink-3)}
+/* On phones the whole open post scrolls, so the caption and comments are easy to reach. */
+@media (max-width:600px){
+  .pv-back{display:block;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .pv{height:auto;min-height:100%;max-height:none;overflow:visible;display:block}
+  .pv-top{position:sticky;top:0;background:#fff;z-index:2}
+  .pv-img{flex:none}
+  .pv-img img{max-height:72vh;width:100%;object-fit:contain}
+  .pv-back .lb-nav{display:none}
+}

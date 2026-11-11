@@ -37,7 +37,7 @@ export default async function ProfileTop({
         <div className="igp-pic">{picture}</div>
         <ul className="igp-stats">
           <li>
-            <a href="#photos"><b>{photoCount}</b><span>photo{photoCount === 1 ? "" : "s"}</span></a>
+            <a href="#photos"><b>{photoCount}</b><span>post{photoCount === 1 ? "" : "s"}</span></a>
           </li>
           <li>
             <a href="#reviews"><b>{reviewCount}</b><span>review{reviewCount === 1 ? "" : "s"}</span></a>
