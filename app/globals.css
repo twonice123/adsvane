@@ -468,3 +468,8 @@ button.galitem:hover img{transform:scale(1.04)}
   .pv-img img{max-height:72vh;width:100%;object-fit:contain}
   .pv-back .lb-nav{display:none}
 }
+/* Profile tab row: Photos, Contact, Reviews, Reposts, Saved fit on one line */
+.tabs a{flex:1;text-align:center}
+@media (max-width:600px){.tabs{gap:0}.tabs a{padding:10px 4px;font-size:14px}}
+#reposts .gal,#saved .gal{gap:3px}
+#reposts .galitem,#saved .galitem{aspect-ratio:3/4;border-radius:4px}

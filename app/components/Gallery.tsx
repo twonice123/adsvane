@@ -372,7 +372,7 @@ export default function Gallery({
                     }}
                     rows={1}
                     maxLength={1000}
-                    placeholder={talk && talk.length ? "Add a comment…" : "Be the first to comment… e.g. How much is this?"}
+                    placeholder={talk && talk.length ? "Add a comment…" : "Ask a question or say something nice…"}
                     aria-label="Add a comment"
                   />
                   <button type="submit" className="lnk" disabled={!reply.trim() || sending}>{sending ? "Posting…" : "Post"}</button>

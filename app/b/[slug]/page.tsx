@@ -7,6 +7,7 @@ import { ratingsFor, sponsoredIds } from "@/lib/queries";
 import { Logo } from "@/app/components/Logo";
 import Gallery from "@/app/components/Gallery";
 import { toPosts } from "@/lib/posts";
+import { memberPosts } from "@/lib/member";
 import { Cover } from "@/app/components/Cover";
 import ProfileTop from "@/app/components/ProfileTop";
 import { getMe } from "@/lib/auth";
@@ -42,11 +43,13 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
 
   const user = await getMe(supabase);
   const isOwner = !!user && user.id === biz.owner_id;
-  const [{ data: reviews }, { data: photoRows }, ratings, sponsored] = await Promise.all([
+  const [{ data: reviews }, { data: photoRows }, ratings, sponsored, reposts, saved] = await Promise.all([
     supabase.from("reviews").select("*").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(50),
     supabase.from("business_photos").select("id, url, caption, post_text, post_id, position, view_count").eq("business_id", biz.id).eq("hidden", false).order("created_at", { ascending: false }).limit(1000),
     ratingsFor(supabase, [biz.id]),
     sponsoredIds(supabase, [biz.id]),
+    memberPosts(supabase, biz.owner_id, "reposts", user?.id || null),
+    isOwner ? memberPosts(supabase, biz.owner_id, "saved", user!.id) : Promise.resolve([]),
   ]);
   const r = ratings.get(biz.id);
   const revs = (reviews as Review[]) || [];
@@ -96,10 +99,11 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
           sponsored={sponsored.has(biz.id)}
         />
         <nav className="tabs" aria-label="On this page">
-          <a href="#photos">Photos{photos.length > 0 ? ` (${photos.length})` : ""}</a>
-          {biz.services?.length > 0 && <a href="#services">Services</a>}
+          <a href="#photos">Photos</a>
           <a href="#contact">Contact</a>
           <a href="#reviews">Reviews</a>
+          <a href="#reposts">Reposts</a>
+          {isOwner && <a href="#saved">Saved</a>}
         </nav>
       </div>
 
@@ -182,6 +186,23 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
               <Link className="b" href={`/b/${biz.slug}/review`}>Write a review</Link>
             </p>
           </section>
+
+          <section className="card" id="reposts">
+            <h2>Reposts</h2>
+            <Gallery
+              photos={reposts}
+              loginNext={`/b/${biz.slug}`}
+              empty={<p className="muted" style={{ margin: 0 }}>{isOwner ? "Photos you repost from other businesses show here." : `${biz.name} hasn't reposted anything yet.`}</p>}
+            />
+          </section>
+
+          {isOwner && (
+            <section className="card" id="saved">
+              <h2>Saved</h2>
+              <p className="sub">Only you can see what you&apos;ve saved.</p>
+              <Gallery photos={saved} loginNext={`/b/${biz.slug}`} empty={<p className="muted" style={{ margin: 0 }}>Tap the bookmark on any photo to save it here.</p>} />
+            </section>
+          )}
         </div>
         <aside className="stack">
           <section className="card">
