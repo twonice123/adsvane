@@ -2,10 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/server";
-import { money, siteUrl, starText, isRunning, type Business, type Photo, type Promotion, type Review } from "@/lib/data";
+import { siteUrl, starText, isRunning, type Business, type Photo, type Promotion, type Review } from "@/lib/data";
 import { ratingsFor } from "@/lib/queries";
 import { Logo } from "@/app/components/Logo";
-import { stopPromotion } from "../actions";
 import PhotoUpload from "./photos/PhotoUpload";
 import Gallery from "@/app/components/Gallery";
 import { toPosts } from "@/lib/posts";
@@ -60,6 +59,16 @@ export default async function Manage({ params, searchParams }: { params: Promise
           cover={<Cover url={biz.cover_url} focus={biz.cover_focus} />}
           picture={<Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />}
         />
+        <div className="pbar">
+          <Link className="pbar-main" href={`/dashboard/${id}/promote`}>
+            <b>Promote your account</b>
+            <small>
+              <span aria-hidden="true">↗</span>{" "}
+              {running ? `Promotion running · ${daysLeft} day${daysLeft > 1 ? "s" : ""} left` : "Get seen by more customers nearby"}
+            </small>
+          </Link>
+          <PhotoUpload businessId={id} kind="gallery" label="+" ariaLabel="New post" multiple className="pbar-plus" wrapClass="pbar-up" />
+        </div>
         <ProfileTabs tabs={profileTabs(true)} />
       </div>
       {sp.new && <ScrollTop />}
@@ -67,49 +76,17 @@ export default async function Manage({ params, searchParams }: { params: Promise
       {sp.promo === "started" && <p className="ok">Your promotion is running. Your profile now shows as Sponsored.</p>}
       {sp.promo === "stopped" && <p className="note">Promotion stopped. Your free listing still shows in search.</p>}
 
-      <div className="grid" id="ptb" data-tab="photos" style={{ marginTop: 18, gridTemplateColumns: "1fr" }}>
+      <div className="grid" id="ptb" data-tab="photos" style={{ marginTop: 10, gridTemplateColumns: "1fr" }}>
         <div className="stack">
-          <section className="card tabp" data-p="photos" id="photos">
-            <h2>Photos of your work</h2>
-            <p className="sub">
-              Post photos of your work with a caption. Tap a photo, or press and hold it, to edit the caption, archive it or delete it.
-              {posts.some((p) => p.hidden) && (
-                <>
-                  {" "}
-                  <Link href="/archive">Archive ({posts.filter((p) => p.hidden).length})</Link>
-                </>
-              )}
-            </p>
-            <PhotoUpload businessId={id} kind="gallery" label="New post" multiple />
+          <div className="tabp dash-photos" data-p="photos" id="photos">
             <Gallery
               photos={posts.filter((p) => !p.hidden)}
               owner
               loginNext={`/dashboard/${id}`}
-              empty={<p className="muted" style={{ marginBottom: 0 }}>No photos yet. Businesses with photos get far more calls.</p>}
+              empty={<p className="muted" style={{ margin: "8px 0 0" }}>No photos yet. Tap + to post your first one. Businesses with photos get far more calls.</p>}
             />
-          </section>
+          </div>
 
-          <section className="card tabp" data-p="photos">
-            <h2>Promote profile</h2>
-            {running ? (
-              <>
-                <p style={{ margin: "0 0 6px" }}><b style={{ color: "var(--brand)" }}>Promotion running</b> · {daysLeft} day{daysLeft > 1 ? "s" : ""} left</p>
-                <p className="muted" style={{ marginTop: 0 }}>
-                  {money(running.daily_budget_cents)}/day for {running.days} days within {running.radius_miles} miles ·{" "}
-                  {[running.show_in_search && "AdsVane search", running.show_in_email && "customer emails"].filter(Boolean).join(" + ")}
-                </p>
-                <form action={stopPromotion}>
-                  <input type="hidden" name="business_id" value={id} />
-                  <button className="b danger" type="submit">Stop promotion</button>
-                </form>
-              </>
-            ) : (
-              <>
-                <p className="sub">Not promoting right now. Your free listing still shows in search. Promote to appear at the top as Sponsored and in emails to nearby customers.</p>
-                <Link className="b" href={`/dashboard/${id}/promote`}>Promote profile</Link>
-              </>
-            )}
-          </section>
 
           <section className="card tabp" data-p="contact" id="contact">
             <h2>Contact details</h2>

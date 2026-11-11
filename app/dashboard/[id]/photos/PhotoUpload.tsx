@@ -30,6 +30,7 @@ export default function PhotoUpload({
   multiple = false,
   className = "b",
   wrapClass = "",
+  ariaLabel,
 }: {
   businessId: string;
   kind: "logo" | "cover" | "gallery";
@@ -37,6 +38,7 @@ export default function PhotoUpload({
   multiple?: boolean;
   className?: string;
   wrapClass?: string;
+  ariaLabel?: string;
 }) {
   const router = useRouter();
   const [state, setState] = useState<PhotoState>({});
@@ -101,8 +103,8 @@ export default function PhotoUpload({
   return (
     <div className={`upl ${wrapClass}`}>
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple={multiple} onChange={onPick} hidden />
-      <button type="button" className={className} disabled={working} onClick={() => input.current?.click()}>
-        {working ? (kind === "gallery" ? "Posting…" : "Uploading…") : label}
+      <button type="button" className={className} disabled={working} onClick={() => input.current?.click()} aria-label={ariaLabel} aria-busy={working}>
+        {working ? (label === "+" ? <span className="spin" aria-hidden="true" /> : kind === "gallery" ? "Posting…" : "Uploading…") : label}
       </button>
       {pending2 && (
         <div className="sh-back" role="dialog" aria-modal="true" aria-label="New post" onClick={(e) => e.target === e.currentTarget && cancelPost()}>

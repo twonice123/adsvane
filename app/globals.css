@@ -500,3 +500,18 @@ button.galitem:hover img{transform:scale(1.04)}
 .drawer-n{margin-left:auto;background:#e0245e;color:#fff;font-size:12px;font-weight:700;border-radius:9px;padding:1px 7px}
 .drawer form{margin:0}
 .galitem.ownr{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+/* owner page: small "Promote your account" box with the + post button */
+.pbar{display:flex;align-items:center;gap:12px;margin:12px 24px 0;max-width:720px;background:#efebf6;border-radius:12px;padding:10px 10px 10px 16px;position:relative}
+.pbar-main{flex:1;min-width:0;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pbar-main b{font-size:15px}
+.pbar-main small{font-size:13px;color:var(--ink-3)}
+.pbar-main small span{color:#16a34a}
+.pbar-up{flex:none}
+.pbar-plus{width:52px;height:36px;border:0;border-radius:10px;background:#111;color:#fff;font:700 26px/1 Inter,system-ui,sans-serif;cursor:pointer;box-shadow:-3px 0 0 #25f4ee,3px 0 0 #fe2c55;display:grid;place-items:center;padding:0 0 3px}
+.pbar-plus:active{transform:scale(.95)}
+.pbar-plus .spin{width:18px;height:18px;border-width:3px}
+.pbar .upl .okline,.pbar .upl .err{position:absolute;right:0;top:calc(100% + 4px);background:#fff;padding:4px 10px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.12);z-index:3;white-space:nowrap}
+@media (max-width:600px){.pbar{margin:12px 16px 0}}
+.dash-photos{margin-top:0}
+.pbar .upl .okline{animation:pbar-fade 3.5s forwards;pointer-events:none}
+@keyframes pbar-fade{0%,75%{opacity:1}100%{opacity:0;visibility:hidden}}
