@@ -473,3 +473,12 @@ button.galitem:hover img{transform:scale(1.04)}
 @media (max-width:600px){.tabs{gap:0}.tabs a{padding:10px 4px;font-size:14px}}
 #reposts .gal,#saved .gal{gap:3px}
 #reposts .galitem,#saved .galitem{aspect-ratio:3/4;border-radius:4px}
+/* Business page tabs: only the chosen tab's content shows */
+#ptb[data-tab] .tabp{display:none}
+#ptb[data-tab="photos"] .tabp[data-p="photos"],#ptb[data-tab="contact"] .tabp[data-p="contact"],#ptb[data-tab="reviews"] .tabp[data-p="reviews"],#ptb[data-tab="reposts"] .tabp[data-p="reposts"],#ptb[data-tab="saved"] .tabp[data-p="saved"]{display:block}
+#ptb .stack>.tabp{margin-top:0}#ptb .stack>.tabp~.tabp{margin-top:18px}
+#ptb:not([data-tab="contact"]){grid-template-columns:1fr}
+.tabs a{display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabs a.on{color:var(--ink);border-bottom-color:var(--ink)}
+@media (max-width:600px){.tabs a span{font-size:12.5px}}
+@media (max-width:600px){#reposts.card,#saved.card{padding-left:0;padding-right:0;border-left:0;border-right:0;border-radius:0}#reposts.card>h2,#reposts.card>p,#saved.card>h2,#saved.card>p{margin-left:16px;margin-right:16px}#reposts .galitem,#saved .galitem{border-radius:0}}

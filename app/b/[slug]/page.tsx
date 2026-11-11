@@ -6,6 +6,7 @@ import { AMENITIES, AMENITY_LABEL, DAYS, SOCIAL, STATES, socialLink, socialText,
 import { ratingsFor, sponsoredIds } from "@/lib/queries";
 import { Logo } from "@/app/components/Logo";
 import Gallery from "@/app/components/Gallery";
+import ProfileTabs from "@/app/components/ProfileTabs";
 import { toPosts } from "@/lib/posts";
 import { memberPosts } from "@/lib/member";
 import { Cover } from "@/app/components/Cover";
@@ -98,18 +99,20 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
           isOwner={isOwner}
           sponsored={sponsored.has(biz.id)}
         />
-        <nav className="tabs" aria-label="On this page">
-          <a href="#photos">Photos</a>
-          <a href="#contact">Contact</a>
-          <a href="#reviews">Reviews</a>
-          <a href="#reposts">Reposts</a>
-          {isOwner && <a href="#saved">Saved</a>}
-        </nav>
+        <ProfileTabs
+          tabs={[
+            { key: "photos", label: "Photos", icon: <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M3 3h5v5H3zM9.5 3h5v5h-5zM16 3h5v5h-5zM3 9.5h5v5H3zM9.5 9.5h5v5h-5zM16 9.5h5v5h-5zM3 16h5v5H3zM9.5 16h5v5h-5zM16 16h5v5h-5z" /></svg> },
+            { key: "contact", label: "Contact", icon: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" /></svg> },
+            { key: "reviews", label: "Reviews", icon: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" /></svg> },
+            { key: "reposts", label: "Reposts", icon: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 11V9a3 3 0 0 1 3-3h12" /><path d="m16 3 3 3-3 3" /><path d="M20 13v2a3 3 0 0 1-3 3H5" /><path d="m8 21-3-3 3-3" /></svg> },
+            ...(isOwner ? [{ key: "saved", label: "Saved", icon: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg> }] : []),
+          ]}
+        />
       </div>
 
-      <div className="grid">
+      <div className="grid" id="ptb" data-tab="photos">
         <div className="stack">
-          <section className="card" id="photos">
+          <section className="card tabp" data-p="photos" id="photos">
             <h2>Photos</h2>
             {photos.length > 0 ? (
               <Gallery photos={posts} owner={isOwner} loginNext={`/b/${biz.slug}`} initial={60} />
@@ -118,7 +121,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
             )}
           </section>
           {biz.services?.length > 0 && (
-            <section className="card" id="services">
+            <section className="card tabp" data-p="contact" id="services">
               <h2>Services</h2>
               {biz.services.map((s, i) => (
                 <div key={i} className="review">
@@ -128,7 +131,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
               ))}
             </section>
           )}
-          <section className="card contact" id="contact">
+          <section className="card contact tabp" data-p="contact" id="contact">
             <h2>Contact {biz.name}</h2>
             <p className="sub">Like what you see? Get in touch directly. AdsVane doesn&apos;t charge you anything.</p>
             <div className="cgrid">
@@ -172,7 +175,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
             )}
           </section>
 
-          <section className="card" id="reviews">
+          <section className="card tabp" data-p="reviews" id="reviews">
             <h2>Reviews</h2>
             {revs.length === 0 && <p className="muted">Be the first to review {biz.name}.</p>}
             {revs.map((rv) => (
@@ -187,7 +190,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
             </p>
           </section>
 
-          <section className="card" id="reposts">
+          <section className="card tabp" data-p="reposts" id="reposts">
             <h2>Reposts</h2>
             <Gallery
               photos={reposts}
@@ -197,21 +200,21 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
           </section>
 
           {isOwner && (
-            <section className="card" id="saved">
+            <section className="card tabp" data-p="saved" id="saved">
               <h2>Saved</h2>
               <p className="sub">Only you can see what you&apos;ve saved.</p>
               <Gallery photos={saved} loginNext={`/b/${biz.slug}`} empty={<p className="muted" style={{ margin: 0 }}>Tap the bookmark on any photo to save it here.</p>} />
             </section>
           )}
         </div>
-        <aside className="stack">
-          <section className="card">
+        <aside className="stack tabp" data-p="contact">
+          <section className="card tabp" data-p="contact">
             <h2>Location</h2>
             <p style={{ margin: 0 }}>{biz.show_address && biz.street ? address : biz.service_area ? `Serves ${biz.service_area}` : `${biz.city}, ${biz.state}`}</p>
             {biz.phone && <p style={{ margin: "6px 0 0" }}><a href={`tel:${tel}`}>{biz.phone}</a></p>}
           </section>
           {Object.values(biz.hours || {}).some(Boolean) && (
-            <section className="card">
+            <section className="card tabp" data-p="contact">
               <h2>Hours</h2>
               <table className="hours">
                 <tbody>
@@ -229,7 +232,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
             </section>
           )}
           {amen.length > 0 && (
-            <section className="card">
+            <section className="card tabp" data-p="contact">
               <h2>Good to know</h2>
               {AMENITIES.filter((g) => g.items.some(([k]) => amen.includes(k))).map((g) => (
                 <div key={g.group} style={{ marginBottom: 10 }}>
