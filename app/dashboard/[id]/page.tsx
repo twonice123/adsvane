@@ -60,13 +60,14 @@ export default async function Manage({ params, searchParams }: { params: Promise
           picture={<Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />}
         />
         <div className="pbar">
-          <Link className="pbar-main" href={`/dashboard/${id}/promote`}>
+          <div className="pbar-main">
             <b>Promote your account</b>
             <small>
               <span aria-hidden="true">↗</span>{" "}
-              {running ? `Promotion running · ${daysLeft} day${daysLeft > 1 ? "s" : ""} left` : "Get seen by more customers nearby"}
+              {running ? `${daysLeft} day${daysLeft > 1 ? "s" : ""} left` : "Reach more customers"}
             </small>
-          </Link>
+          </div>
+          <Link className="pbar-btn" href={`/dashboard/${id}/promote`}>Promote page</Link>
           <PhotoUpload businessId={id} kind="gallery" label="+" ariaLabel="New post" multiple className="pbar-plus" wrapClass="pbar-up" />
         </div>
         <ProfileTabs tabs={profileTabs(true)} />
