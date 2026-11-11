@@ -2,7 +2,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { addressText, locate } from "@/lib/geo";
+import { addressText, geocode, locate } from "@/lib/geo";
+import { AGE_MAX, AGE_MIN, MAX_RADIUS, type Target } from "@/lib/promo";
 
 // The map point for an address, saved so search can show miles.
 async function place(a: { street: string | null; city: string; state: string; zip: string | null }) {
@@ -125,17 +126,53 @@ export async function startPromotion(_prev: PromoState, fd: FormData): Promise<P
   const businessId = str(fd, "business_id", 40);
   const daily = Math.round(Number(fd.get("daily")) * 100);
   const days = Number(fd.get("days"));
-  const radius = Number(fd.get("radius"));
   const inSearch = fd.get("show_in_search") === "on";
   const inEmail = fd.get("show_in_email") === "on";
   if (!Number.isFinite(daily) || daily < 500) return { error: "The daily budget must be at least $5." };
   if (daily > 100000) return { error: "The daily budget can be at most $1,000." };
   if (![3, 7, 14, 30].includes(days)) return { error: "Pick how many days to run." };
-  if (!Number.isInteger(radius) || radius < 2 || radius > 30) return { error: "Pick a distance between 2 and 30 miles." };
   if (!inSearch && !inEmail) return { error: "Pick at least one place to show your profile." };
+
+  // Where it shows.
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(fd.get("targets") || "[]"));
+  } catch {
+    raw = [];
+  }
+  const list = (Array.isArray(raw) ? raw : []).slice(0, 25) as Record<string, unknown>[];
+  const targets: Target[] = [];
+  if (list.some((t) => t.kind === "us")) targets.push({ kind: "us" });
+  else {
+    for (const t of list) {
+      if (t.kind === "state" && typeof t.state === "string" && STATES[t.state]) {
+        targets.push({ kind: "state", state: t.state, label: STATES[t.state] });
+      } else if (t.kind === "place" && typeof t.label === "string" && t.label.trim()) {
+        const label = t.label.trim().slice(0, 160);
+        const radius = Math.round(Number(t.radius));
+        if (!Number.isFinite(radius) || radius < 1 || radius > MAX_RADIUS) return { error: `Pick a distance between 1 and ${MAX_RADIUS} miles for ${label}.` };
+        const pt = await geocode(label);
+        if (!pt) return { error: `We couldn't find "${label}" on the map. Pick it from the suggestions as you type.` };
+        targets.push({ kind: "place", label, lat: pt.lat, lng: pt.lng, radius });
+      }
+    }
+  }
+  if (!targets.length) return { error: "Add at least one place where your ad should show." };
+  const radius = Math.min(30, Math.max(2, ...targets.map((t) => (t.kind === "place" ? t.radius : 30))));
+
+  const ageMin = Number(fd.get("age_min"));
+  const ageMax = Number(fd.get("age_max"));
+  if (!Number.isInteger(ageMin) || !Number.isInteger(ageMax) || ageMin < AGE_MIN || ageMax > AGE_MAX || ageMin > ageMax) return { error: "Pick an age range." };
+
+  const photoIds = String(fd.get("photo_ids") || "").split(",").filter((x) => /^[0-9a-f-]{36}$/.test(x)).slice(0, 5);
 
   const { data: biz } = await supabase.from("businesses").select("id").eq("id", businessId).eq("owner_id", user.id).maybeSingle();
   if (!biz) return { error: "Business not found." };
+  const { data: own } = photoIds.length
+    ? await supabase.from("business_photos").select("id").eq("business_id", businessId).in("id", photoIds)
+    : { data: [] as { id: string }[] };
+  const okIds = new Set(((own as { id: string }[]) || []).map((p) => p.id));
+  const adPhotos = photoIds.filter((x) => okIds.has(x));
 
   // Only one running promotion per business: stop any current one first.
   await supabase.from("promotions").update({ status: "stopped" }).eq("business_id", businessId).eq("status", "active");
@@ -145,6 +182,10 @@ export async function startPromotion(_prev: PromoState, fd: FormData): Promise<P
     daily_budget_cents: daily,
     days,
     radius_miles: radius,
+    targets,
+    age_min: ageMin,
+    age_max: ageMax === AGE_MAX ? 99 : ageMax,
+    photo_ids: adPhotos,
     show_in_search: inSearch,
     show_in_email: inEmail,
     ends_at: ends,

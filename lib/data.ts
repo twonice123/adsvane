@@ -61,6 +61,10 @@ export type Promotion = {
   radius_miles: number;
   show_in_search: boolean;
   show_in_email: boolean;
+  targets?: import("./promo").Target[] | null;
+  age_min?: number | null;
+  age_max?: number | null;
+  photo_ids?: string[];
   status: "active" | "stopped" | "completed";
   starts_at: string;
   ends_at: string;

@@ -5,6 +5,8 @@ import { AMENITY_LABEL, type Business } from "@/lib/data";
 import { ratingsFor } from "@/lib/queries";
 import PromoteForm from "./PromoteForm";
 import { getMe } from "@/lib/auth";
+import { group } from "@/lib/posts";
+import { addressText } from "@/lib/geo";
 import { isRunning, type Promotion } from "@/lib/data";
 import { stopPromotion } from "../../actions";
 
@@ -18,11 +20,13 @@ export default async function Promote({ params }: { params: Promise<{ id: string
   const { data } = await supabase.from("businesses").select("*").eq("id", id).eq("owner_id", user!.id).maybeSingle();
   if (!data) notFound();
   const biz = data as Business;
-  const [{ data: optins }, ratings, { data: promos }] = await Promise.all([
+  const [{ data: optins }, ratings, { data: promos }, { data: photoRows }] = await Promise.all([
     supabase.rpc("optin_count"),
     ratingsFor(supabase, [id]),
     supabase.from("promotions").select("*").eq("business_id", id).order("created_at", { ascending: false }).limit(5),
+    supabase.from("business_photos").select("id, url, caption, post_id, position").eq("business_id", id).eq("hidden", false).order("created_at", { ascending: false }).limit(200),
   ]);
+  const photos = group((photoRows as { id: string; url: string; caption: string | null; post_id: string | null; position: number | null }[]) || []).map((p) => ({ id: p.id, url: p.url }));
   const running = ((promos as Promotion[]) || []).find(isRunning);
   const r = ratings.get(id);
   return (
@@ -40,7 +44,8 @@ export default async function Promote({ params }: { params: Promise<{ id: string
         </section>
       )}
       <PromoteForm
-        biz={{ id: biz.id, name: biz.name, logo_url: biz.logo_url, category: biz.category, city: biz.city, state: biz.state }}
+        biz={{ id: biz.id, name: biz.name, logo_url: biz.logo_url, category: biz.category, city: biz.city, state: biz.state, address: addressText(biz) }}
+        photos={photos}
         features={biz.amenities.map((a) => AMENITY_LABEL[a]).filter(Boolean).slice(0, 3)}
         rating={r ? { rating: Number(r.rating), count: r.review_count } : null}
         optins={typeof optins === "number" ? optins : 0}

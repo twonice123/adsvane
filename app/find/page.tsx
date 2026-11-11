@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { CATEGORIES, starText, type Business } from "@/lib/data";
-import { ratingsFor, sponsoredIds, cityLine } from "@/lib/queries";
+import { CATEGORIES, isRunning, starText, type Business, type Promotion } from "@/lib/data";
+import { ratingsFor, cityLine } from "@/lib/queries";
+import { reaches } from "@/lib/promo";
 import { addressText, geocode, locate, miles, milesText, type Point } from "@/lib/geo";
 import { fit, parseSearch, splitPlace } from "@/lib/search";
 import { Logo } from "../components/Logo";
@@ -100,12 +101,36 @@ export default async function Directory({ searchParams }: { searchParams: Promis
     if (close.length) pool = close;
   }
 
+  // Paid ads: shown when the search is inside one of the places the owner picked,
+  // even if the shop itself is somewhere else.
+  const { data: promoRows } = await supabase
+    .from("promotions")
+    .select("business_id,status,ends_at,show_in_search,targets")
+    .eq("status", "active")
+    .eq("show_in_search", true)
+    .gt("ends_at", new Date().toISOString());
+  const region = hdr.get("x-vercel-ip-country") === "US" ? hdr.get("x-vercel-ip-country-region") : null;
+  const searchState = place ? splitPlace(place).state || null : origin ? region : null;
+  const sponsored = new Set<string>();
+  const inPool = new Set(pool.map((b) => b.id));
+  for (const p of ((promoRows as Pick<Promotion, "business_id" | "status" | "ends_at" | "targets">[]) || []).filter(isRunning)) {
+    if (!reaches(p.targets, origin, searchState)) continue;
+    if (inPool.has(p.business_id)) sponsored.add(p.business_id);
+    else if (p.targets?.length && (origin || searchState)) {
+      const b = all.find((x) => x.id === p.business_id);
+      if (b && (!cat || b.category === cat) && (!what.length || fit(b, what) >= 1)) {
+        pool.push(b);
+        inPool.add(b.id);
+        sponsored.add(b.id);
+      }
+    }
+  }
+
   const dist = new Map<string, number>();
   if (me) for (const b of pool) if (pts.has(b.id)) dist.set(b.id, miles(me, pts.get(b.id)!));
   const ids = pool.map((b) => b.id);
-  const [ratings, sponsored, { data: photoRows }] = await Promise.all([
+  const [ratings, { data: photoRows }] = await Promise.all([
     ratingsFor(supabase, ids),
-    sponsoredIds(supabase, ids),
     ids.length
       ? supabase.from("business_photos").select("business_id, url").in("business_id", ids).eq("hidden", false).order("created_at", { ascending: false }).limit(1000)
       : Promise.resolve({ data: [] as { business_id: string; url: string }[] }),
