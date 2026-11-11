@@ -14,6 +14,9 @@ import CopyLink from "./CopyLink";
 import ScrollTop from "@/app/components/ScrollTop";
 import ProfileTop from "@/app/components/ProfileTop";
 import { getMe } from "@/lib/auth";
+import ProfileTabs from "@/app/components/ProfileTabs";
+import { profileTabs } from "@/app/components/tabIcons";
+import { memberPosts } from "@/lib/member";
 
 export const metadata = { title: "Dashboard", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -27,12 +30,15 @@ export default async function Manage({ params, searchParams }: { params: Promise
   if (!data) notFound();
   const biz = data as Business;
 
-  const [{ data: promos }, { data: reviews }, { data: photoRows }, ratings] = await Promise.all([
+  const [{ data: promos }, { data: reviews }, { data: photoRows }, ratings, reposts, saved] = await Promise.all([
     supabase.from("promotions").select("*").eq("business_id", id).order("created_at", { ascending: false }).limit(5),
     supabase.from("reviews").select("*").eq("business_id", id).order("created_at", { ascending: false }).limit(5),
     supabase.from("business_photos").select("*").eq("business_id", id).order("created_at", { ascending: false }),
     ratingsFor(supabase, [id]),
+    memberPosts(supabase, user!.id, "reposts", user!.id),
+    memberPosts(supabase, user!.id, "saved", user!.id),
   ]);
+  const address = [biz.street, biz.city, `${biz.state} ${biz.zip || ""}`.trim()].filter(Boolean).join(", ");
   const photos = (photoRows as Photo[]) || [];
   const posts = await toPosts(supabase, photos, user!.id, () => ({ name: biz.name, slug: biz.slug, logo_url: biz.logo_url }));
   const running = ((promos as Promotion[]) || []).find(isRunning);
@@ -54,20 +60,36 @@ export default async function Manage({ params, searchParams }: { params: Promise
           cover={<Cover url={biz.cover_url} focus={biz.cover_focus} />}
           picture={<Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />}
         />
+        <ProfileTabs tabs={profileTabs(true)} />
       </div>
       {sp.new && <ScrollTop />}
       {sp.new && <p className="ok">Your free listing is live! Tap Edit profile to add your profile picture, cover photo and bio.</p>}
       {sp.promo === "started" && <p className="ok">Your promotion is running. Your profile now shows as Sponsored.</p>}
       {sp.promo === "stopped" && <p className="note">Promotion stopped. Your free listing still shows in search.</p>}
-      <div className="btns" style={{ margin: "16px 0" }}>
-        <Link className="b" href={`/b/${biz.slug}`}>View my page</Link>
-        <Link className="b ghost" href={`/dashboard/${id}/edit`}>Hours, services &amp; social links</Link>
-        <Link className="b ghost" href="/dashboard">All my businesses</Link>
-      </div>
 
-      <div className="grid">
+      <div className="grid" id="ptb" data-tab="photos" style={{ marginTop: 18, gridTemplateColumns: "1fr" }}>
         <div className="stack">
-          <section className="card">
+          <section className="card tabp" data-p="photos" id="photos">
+            <h2>Photos of your work</h2>
+            <p className="sub">
+              Post photos of your work with a caption. Tap a photo, or press and hold it, to edit the caption, archive it or delete it.
+              {posts.some((p) => p.hidden) && (
+                <>
+                  {" "}
+                  <Link href="/archive">Archive ({posts.filter((p) => p.hidden).length})</Link>
+                </>
+              )}
+            </p>
+            <PhotoUpload businessId={id} kind="gallery" label="New post" multiple />
+            <Gallery
+              photos={posts.filter((p) => !p.hidden)}
+              owner
+              loginNext={`/dashboard/${id}`}
+              empty={<p className="muted" style={{ marginBottom: 0 }}>No photos yet. Businesses with photos get far more calls.</p>}
+            />
+          </section>
+
+          <section className="card tabp" data-p="photos">
             <h2>Promote profile</h2>
             {running ? (
               <>
@@ -89,27 +111,21 @@ export default async function Manage({ params, searchParams }: { params: Promise
             )}
           </section>
 
-          <section className="card" id="photos">
-            <h2>Photos of your work</h2>
-            <p className="sub">
-              Post photos of your work with a caption. Tap a photo, or press and hold it, to edit the caption, archive it or delete it.
-              {posts.some((p) => p.hidden) && (
-                <>
-                  {" "}
-                  <Link href="/archive">Archive ({posts.filter((p) => p.hidden).length})</Link>
-                </>
-              )}
-            </p>
-            <PhotoUpload businessId={id} kind="gallery" label="New post" multiple />
-            <Gallery
-              photos={posts.filter((p) => !p.hidden)}
-              owner
-              loginNext={`/dashboard/${id}`}
-              empty={<p className="muted" style={{ marginBottom: 0 }}>No photos yet. Businesses with photos get far more calls.</p>}
-            />
+          <section className="card tabp" data-p="contact" id="contact">
+            <h2>Contact details</h2>
+            <p className="sub">This is how customers reach you from your page.</p>
+            <div className="review"><b>Phone</b><p>{biz.phone || <span className="muted">Not added</span>}</p></div>
+            <div className="review"><b>Email</b><p>{biz.contact_email || <span className="muted">Not added</span>}</p></div>
+            <div className="review"><b>Website</b><p>{biz.website || <span className="muted">Not added</span>}</p></div>
+            <div className="review"><b>Address</b><p>{biz.show_address && biz.street ? address : `${biz.city}, ${biz.state}`}</p></div>
+            <div className="btns" style={{ marginTop: 12 }}>
+              <Link className="b" href={`/dashboard/${id}/edit`}>Hours, services &amp; social links</Link>
+              <Link className="b ghost" href={`/b/${biz.slug}`}>View my page</Link>
+              <Link className="b ghost" href="/dashboard">All my businesses</Link>
+            </div>
           </section>
 
-          <section className="card">
+          <section className="card tabp" data-p="reviews" id="reviews">
             <h2>Recent reviews</h2>
             {r ? <p style={{ marginTop: 0 }}><span className="stars">{starText(Number(r.rating))}</span> {Number(r.rating).toFixed(1)} from {r.review_count} review{r.review_count === 1 ? "" : "s"}</p> : <p className="muted">No reviews yet. Share your review link to get your first one.</p>}
             {((reviews as Review[]) || []).map((rv) => (
@@ -119,10 +135,8 @@ export default async function Manage({ params, searchParams }: { params: Promise
               </div>
             ))}
           </section>
-        </div>
 
-        <aside className="stack">
-          <section className="card">
+          <section className="card tabp" data-p="reviews">
             <h2>Get more reviews</h2>
             <p className="sub">Print this QR code for your counter, or text the link to customers after a visit.</p>
             <div className="qr" dangerouslySetInnerHTML={{ __html: qr }} role="img" aria-label="QR code for your review page" />
@@ -130,7 +144,19 @@ export default async function Manage({ params, searchParams }: { params: Promise
             <CopyLink url={reviewUrl} />
             <p style={{ marginBottom: 0 }}><a className="b ghost" href={`/dashboard/${id}/qr`} target="_blank">Printable QR poster</a></p>
           </section>
-        </aside>
+
+          <section className="card tabp" data-p="reposts" id="reposts">
+            <h2>Reposts</h2>
+            <Gallery photos={reposts} loginNext={`/dashboard/${id}`} empty={<p className="muted" style={{ margin: 0 }}>Photos you repost from other businesses show here.</p>} />
+          </section>
+
+          <section className="card tabp" data-p="saved" id="saved">
+            <h2>Saved</h2>
+            <p className="sub">Only you can see what you&apos;ve saved.</p>
+            <Gallery photos={saved} loginNext={`/dashboard/${id}`} empty={<p className="muted" style={{ margin: 0 }}>Tap the bookmark on any photo to save it here.</p>} />
+          </section>
+        </div>
+
       </div>
     </div>
   );
