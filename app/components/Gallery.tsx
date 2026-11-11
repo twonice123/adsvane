@@ -84,6 +84,12 @@ export default function Gallery({
   const [sending, setSending] = useState(false);
   const replyBox = useRef<HTMLTextAreaElement>(null);
   const [slide, setSlide] = useState(0);
+  const [flash, setFlash] = useState("");
+  const hold = useRef<{ t: ReturnType<typeof setTimeout> | null; fired: boolean }>({ t: null, fired: false });
+  const ownerMenu = (i: number) => {
+    setOpen(i);
+    setMenu("menu");
+  };
   const [viewers, setViewers] = useState<Viewer[] | null>(null);
 
   const list = photos.map((p) => ({ ...p, ...mine[p.id] }));
@@ -223,14 +229,38 @@ export default function Gallery({
 
   return (
     <>
+      {flash && <p className="okline" role="status">{flash}</p>}
       {n === 0 ? (
         empty
       ) : (
         <div className="gal">
           {shown.map((p, i) => (
-            <button key={p.id} type="button" className={`galitem${p.hidden ? " is-hidden" : ""}`} onClick={() => setOpen(i)} aria-label={`Open post ${i + 1} of ${n}`}>
-              <img src={p.url} alt={p.text || `${p.biz.name} photo ${i + 1}`} loading="lazy" />
-              {p.hidden && <span className="galtag">Hidden</span>}
+            <button
+              key={p.id}
+              type="button"
+              className={`galitem${p.hidden ? " is-hidden" : ""}${owner ? " ownr" : ""}`}
+              onClick={() => {
+                if (hold.current.fired) return void (hold.current.fired = false);
+                setOpen(i);
+              }}
+              onContextMenu={(e) => {
+                if (!owner || !p.social) return;
+                e.preventDefault();
+                ownerMenu(i);
+              }}
+              onPointerDown={() => {
+                if (!owner || !p.social) return;
+                hold.current.fired = false;
+                hold.current.t = setTimeout(() => {
+                  hold.current.fired = true;
+                  ownerMenu(i);
+                }, 550);
+              }}
+              onPointerUp={() => hold.current.t && clearTimeout(hold.current.t)}
+              onPointerLeave={() => hold.current.t && clearTimeout(hold.current.t)}
+              onPointerCancel={() => hold.current.t && clearTimeout(hold.current.t)} aria-label={`Open post ${i + 1} of ${n}`}>
+              <img src={p.url} alt={p.text || `${p.biz.name} photo ${i + 1}`} loading="lazy" draggable={false} />
+              {p.hidden && <span className="galtag">Archived</span>}
               {p.pics.length > 1 && <span className="galmulti" aria-label={`${p.pics.length} photos`}>{Icon.stack()}</span>}
               {p.social && (
                 <span className="galstats" aria-label={`${p.views} views${owner ? `, ${p.likes} likes, ${p.comments} comments, ${p.reposts} reposts` : ""}`}>
@@ -293,7 +323,7 @@ export default function Gallery({
                 {cur.pics.map((_, i) => <span key={i} className={i === slide ? "on" : ""} />)}
               </div>
             )}
-            {cur.hidden && <p className="pv-hidden">Hidden from your profile. Only you can see it.</p>}
+            {cur.hidden && <p className="pv-hidden">Archived. Only you can see it. Tap ⋯ to show it on your profile again.</p>}
             <div className="pv-acts">
               {cur.social && (
                 <>
@@ -394,11 +424,12 @@ export default function Gallery({
                       disabled={busy}
                       onClick={() => ownerDo(() => editPhoto(cur.id, { hidden: !cur.hidden }), () => {
                         setMine((m) => ({ ...m, [cur.id]: { ...m[cur.id], hidden: !cur.hidden } }));
-                        setNote(cur.hidden ? "Showing on your profile again." : "Hidden. Customers won't see it, and you can show it again anytime.");
                         setMenu("");
+                        setOpen(null);
+                        setFlash(cur.hidden ? "Showing on your profile again." : "Archived. Find it any time in ☰ Menu → Archive.");
                       })}
                     >
-                      {cur.hidden ? "Show on profile" : "Hide from profile"}
+                      {cur.hidden ? "Show on profile" : "Archive"}
                     </button>
                     <button type="button" className="bad" onClick={() => setMenu("delete")}>Delete</button>
                     <button type="button" className="muted" onClick={() => setMenu("")}>Cancel</button>
@@ -427,7 +458,7 @@ export default function Gallery({
                 {menu === "delete" && (
                   <>
                     <h3>Delete this photo?</h3>
-                    <p className="sub">This can&apos;t be undone. To keep it but stop showing it, choose Hide from profile instead.</p>
+                    <p className="sub">This can&apos;t be undone. To keep it but stop showing it, choose Archive instead.</p>
                     <button
                       type="button"
                       className="bad"

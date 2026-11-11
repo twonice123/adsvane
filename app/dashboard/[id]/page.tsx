@@ -91,10 +91,18 @@ export default async function Manage({ params, searchParams }: { params: Promise
 
           <section className="card" id="photos">
             <h2>Photos of your work</h2>
-            <p className="sub">Post photos of your work with a caption. Tap a photo to edit its caption, hide it or delete it.</p>
+            <p className="sub">
+              Post photos of your work with a caption. Tap a photo, or press and hold it, to edit the caption, archive it or delete it.
+              {posts.some((p) => p.hidden) && (
+                <>
+                  {" "}
+                  <Link href="/archive">Archive ({posts.filter((p) => p.hidden).length})</Link>
+                </>
+              )}
+            </p>
             <PhotoUpload businessId={id} kind="gallery" label="New post" multiple />
             <Gallery
-              photos={posts}
+              photos={posts.filter((p) => !p.hidden)}
               owner
               loginNext={`/dashboard/${id}`}
               empty={<p className="muted" style={{ marginBottom: 0 }}>No photos yet. Businesses with photos get far more calls.</p>}

@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
   const user = data?.claims?.sub ? { id: String(data.claims.sub) } : null;
 
   const path = request.nextUrl.pathname;
-  if (!user && (path.startsWith("/dashboard") || path === "/me" || path === "/notifications")) {
+  if (!user && (path.startsWith("/dashboard") || path === "/me" || path === "/notifications" || path === "/archive")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
@@ -49,5 +49,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/me", "/notifications", "/login", "/auth/:path*"],
+  matcher: ["/dashboard/:path*", "/me", "/notifications", "/archive", "/login", "/auth/:path*"],
 };

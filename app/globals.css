@@ -482,3 +482,21 @@ button.galitem:hover img{transform:scale(1.04)}
 .tabs a.on{color:var(--ink);border-bottom-color:var(--ink)}
 @media (max-width:600px){.tabs a span{font-size:12.5px}}
 @media (max-width:600px){#reposts.card,#saved.card{padding-left:0;padding-right:0;border-left:0;border-right:0;border-radius:0}#reposts.card>h2,#reposts.card>p,#saved.card>h2,#saved.card>p{margin-left:16px;margin-right:16px}#reposts .galitem,#saved .galitem{border-radius:0}}
+/* Header: ☰ menu top right, bell in the nav */
+.menu-btn{order:1;margin-left:auto;background:none;border:0;color:#fff;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;cursor:pointer}
+.menu-btn:hover{background:#ffffff1a}
+.bar .nav{order:2}
+.nav .bell{padding:0;width:38px;height:36px;display:inline-grid;place-items:center;border-radius:50%}
+@media (min-width:701px){.bar .nav{order:1;margin-left:auto}.menu-btn{order:2;margin-left:0}}
+@media (max-width:700px){.bar .nav{width:100%;margin-left:-12px;align-items:center}}
+.drawer-back{position:fixed;inset:0;z-index:90;background:rgba(8,6,14,.5);display:flex;justify-content:flex-end}
+.drawer{background:#fff;width:min(320px,86vw);height:100%;overflow:auto;padding:8px 14px 24px;display:flex;flex-direction:column;animation:drw .18s ease-out}
+@keyframes drw{from{transform:translateX(40px)}}
+.drawer-top{display:flex;align-items:center;justify-content:space-between;padding:8px 2px 12px;border-bottom:1px solid var(--line);margin-bottom:6px;font-size:18px}
+.drawer a,.drawer-out{display:flex;align-items:center;gap:14px;padding:14px 6px;color:var(--ink);text-decoration:none;font:600 16px system-ui,sans-serif;font-family:inherit;border-radius:10px;background:none;border:0;width:100%;cursor:pointer;text-align:left}
+.drawer a:hover,.drawer-out:hover{background:var(--soft)}
+.drawer hr{border:0;border-top:1px solid var(--line);margin:8px 0}
+.drawer-out{color:var(--bad)}
+.drawer-n{margin-left:auto;background:#e0245e;color:#fff;font-size:12px;font-weight:700;border-radius:9px;padding:1px 7px}
+.drawer form{margin:0}
+.galitem.ownr{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
