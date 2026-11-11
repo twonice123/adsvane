@@ -20,22 +20,34 @@ export async function middleware(request: NextRequest) {
       },
     }
   );
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Checks the sign-in token locally when possible (fast), and refreshes it when it has expired.
+  const { data } = await supabase.auth.getClaims().catch(() => ({ data: null }));
+  const user = data?.claims?.sub ? { id: String(data.claims.sub) } : null;
 
   const path = request.nextUrl.pathname;
-  if (!user && (path.startsWith("/dashboard") || path === "/me")) {
+  if (!user && (path.startsWith("/dashboard") || path === "/me" || path === "/notifications")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
-    if (path === "/me") url.searchParams.set("who", "member");
+    if (path !== "/dashboard" && !path.startsWith("/dashboard/")) url.searchParams.set("who", "member");
     url.searchParams.set("next", path + request.nextUrl.search);
     return NextResponse.redirect(url);
+  }
+  // "Add your business" for an owner with one business: go straight to it, skipping a page.
+  if (user && path === "/dashboard") {
+    const { data: rows } = await supabase.from("businesses").select("id").eq("owner_id", user.id).limit(2);
+    if (rows?.length === 1) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/dashboard/${rows[0].id}`;
+      url.search = "";
+      const r = NextResponse.redirect(url);
+      response.cookies.getAll().forEach((c) => r.cookies.set(c));
+      return r;
+    }
   }
   return response;
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/me", "/login", "/auth/:path*"],
+  matcher: ["/dashboard/:path*", "/me", "/notifications", "/login", "/auth/:path*"],
 };

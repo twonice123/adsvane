@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { memberName, memberPosts, type Tab } from "@/lib/member";
 import Gallery from "@/app/components/Gallery";
 import ShareMine from "./ShareMine";
+import { getMe } from "@/lib/auth";
 
 export const metadata = { title: "My page", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ tab
   const sp = await searchParams;
   const tab: Tab = sp.tab === "saved" || sp.tab === "likes" ? sp.tab : "reposts";
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getMe(supabase);
   if (!user) redirect("/login?who=member&next=/me");
   const [name, posts] = await Promise.all([memberName(supabase, user.id), memberPosts(supabase, user.id, tab, user.id)]);
   const t = TABS.find((x) => x.key === tab)!;
@@ -31,11 +32,7 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ tab
           <h1>{name}</h1>
           <p className="muted" style={{ margin: 0 }}>{user.email}</p>
         </div>
-      </div>
-      <div className="btns" style={{ margin: "14px 0 6px" }}>
         <ShareMine path={`/u/${user.id}`} />
-        <Link className="b ghost" href="/find">Find services</Link>
-        <form action="/auth/signout" method="post"><button className="b ghost" type="submit">Sign out</button></form>
       </div>
       <nav className="me-tabs" aria-label="My photos">
         {TABS.map((x) => (

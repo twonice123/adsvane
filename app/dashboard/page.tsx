@@ -3,13 +3,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Business } from "@/lib/data";
 import { Logo } from "@/app/components/Logo";
+import { getMe } from "@/lib/auth";
 
 export const metadata = { title: "Your businesses", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getMe(supabase);
   if (!user) redirect("/login");
   const { data } = await supabase.from("businesses").select("*").eq("owner_id", user.id).order("created_at");
   const list = (data as Business[]) || [];

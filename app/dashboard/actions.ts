@@ -10,6 +10,7 @@ async function place(a: { street: string | null; city: string; state: string; zi
   return { lat: pt?.lat ?? null, lng: pt?.lng ?? null, located_from: pt ? addressText(a) : null };
 }
 import { AMENITY_LABEL, CATEGORIES, DAYS, SOCIAL, STATES, slugify, socialLink } from "@/lib/data";
+import { getMe } from "@/lib/auth";
 
 export type FormState = { error?: string; saved?: boolean };
 
@@ -30,9 +31,7 @@ function url(s: string) {
 
 async function requireUser() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getMe(supabase);
   if (!user) redirect("/login");
   return { supabase, user };
 }

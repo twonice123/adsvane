@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/data";
 import PrintButton from "./PrintButton";
+import { getMe } from "@/lib/auth";
 
 export const metadata = { title: "Review QR poster", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function Poster({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getMe(supabase);
   const { data } = await supabase.from("businesses").select("name,slug").eq("id", id).eq("owner_id", user!.id).maybeSingle();
   if (!data) notFound();
   const url = `${siteUrl()}/b/${data.slug}/review`;

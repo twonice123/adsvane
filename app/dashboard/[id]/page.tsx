@@ -13,6 +13,7 @@ import { Cover } from "@/app/components/Cover";
 import CopyLink from "./CopyLink";
 import ScrollTop from "@/app/components/ScrollTop";
 import ProfileTop from "@/app/components/ProfileTop";
+import { getMe } from "@/lib/auth";
 
 export const metadata = { title: "Dashboard", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
   const { id } = await params;
   const sp = await searchParams;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getMe(supabase);
   const { data } = await supabase.from("businesses").select("*").eq("id", id).eq("owner_id", user!.id).maybeSingle();
   if (!data) notFound();
   const biz = data as Business;

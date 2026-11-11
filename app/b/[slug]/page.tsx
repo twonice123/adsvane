@@ -9,6 +9,7 @@ import Gallery from "@/app/components/Gallery";
 import { toPosts } from "@/lib/posts";
 import { Cover } from "@/app/components/Cover";
 import ProfileTop from "@/app/components/ProfileTop";
+import { getMe } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
   const { supabase, biz } = await load(slug);
   if (!biz) notFound();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getMe(supabase);
   const isOwner = !!user && user.id === biz.owner_id;
   const [{ data: reviews }, { data: photoRows }, ratings, sponsored] = await Promise.all([
     supabase.from("reviews").select("*").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(50),

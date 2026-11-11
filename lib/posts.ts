@@ -8,13 +8,14 @@ type Biz = Post["biz"];
 export async function toPosts(supabase: SupabaseClient, rows: Row[], userId: string | null, bizFor: (r: Row) => Biz): Promise<Post[]> {
   const ids = rows.map((r) => r.id).filter((id) => /^[0-9a-f-]{36}$/i.test(id));
   const none = Promise.resolve({ data: [] as { photo_id: string; user_id: string }[] });
-  const [likes, reposts, saves] = ids.length
+  const [likes, reposts, saves, comments] = ids.length
     ? await Promise.all([
         supabase.from("photo_likes").select("photo_id, user_id").in("photo_id", ids).limit(20000),
         supabase.from("photo_reposts").select("photo_id, user_id").in("photo_id", ids).limit(20000),
         userId ? supabase.from("photo_saves").select("photo_id, user_id").in("photo_id", ids).eq("user_id", userId) : none,
+        supabase.from("photo_comments").select("photo_id, user_id").in("photo_id", ids).limit(20000),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
   const count = (list: { photo_id: string; user_id: string }[] | null) => {
     const m = new Map<string, number>();
     const me = new Set<string>();
@@ -27,6 +28,7 @@ export async function toPosts(supabase: SupabaseClient, rows: Row[], userId: str
   const L = count(likes.data as never);
   const R = count(reposts.data as never);
   const S = count(saves.data as never);
+  const C = count(comments.data as never);
   return rows.map((r) => ({
     id: r.id,
     url: r.url,
@@ -34,6 +36,7 @@ export async function toPosts(supabase: SupabaseClient, rows: Row[], userId: str
     hidden: !!r.hidden,
     likes: L.m.get(r.id) || 0,
     reposts: R.m.get(r.id) || 0,
+    comments: C.m.get(r.id) || 0,
     liked: L.me.has(r.id),
     saved: S.me.has(r.id),
     reposted: R.me.has(r.id),

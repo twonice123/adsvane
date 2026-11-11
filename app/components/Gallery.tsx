@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ago } from "@/lib/time";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { deletePhoto, editPhoto, toggle } from "@/app/post-actions";
+import { addComment, deletePhoto, editPhoto, loadComments, noteShare, removeComment, toggle, type Comment } from "@/app/post-actions";
 
 export type Post = {
   id: string;
@@ -11,6 +12,7 @@ export type Post = {
   hidden?: boolean;
   likes: number;
   reposts: number;
+  comments: number;
   liked: boolean;
   saved: boolean;
   reposted: boolean;
@@ -31,6 +33,9 @@ const Icon = {
   ),
   save: (on: boolean) => (
     <svg viewBox="0 0 24 24" width="26" height="26" fill={on ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>
+  ),
+  comment: () => (
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12z" /></svg>
   ),
   dots: () => (
     <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
@@ -65,6 +70,10 @@ export default function Gallery({
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const touch = useRef<number | null>(null);
+  const [talk, setTalk] = useState<Comment[] | null>(null);
+  const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
+  const replyBox = useRef<HTMLTextAreaElement>(null);
 
   const list = photos.map((p) => ({ ...p, ...mine[p.id] }));
   const n = list.length;
@@ -87,10 +96,46 @@ export default function Gallery({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Load the comments for the photo that's open.
+  const curId = cur?.id;
+  const curSocial = cur?.social;
+  useEffect(() => {
+    setTalk(null);
+    setReply("");
+    if (!curId || !curSocial) return;
+    let live = true;
+    loadComments(curId).then((c) => live && setTalk(c));
+    return () => {
+      live = false;
+    };
+  }, [curId, curSocial]);
+
+  async function sendComment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!cur || !reply.trim() || sending) return;
+    setSending(true);
+    const r = await addComment(cur.id, reply);
+    setSending(false);
+    if (r.login) return setMenu("login");
+    if (r.error) return setNote(r.error);
+    setReply("");
+    setTalk(r.comments || []);
+    setMine((m) => ({ ...m, [cur.id]: { ...m[cur.id], comments: (r.comments || []).length } }));
+  }
+
+  async function dropComment(id: string) {
+    if (!cur) return;
+    const r = await removeComment(id, cur.id);
+    if (r.error) return setNote(r.error);
+    setTalk(r.comments || []);
+    setMine((m) => ({ ...m, [cur.id]: { ...m[cur.id], comments: (r.comments || []).length } }));
+  }
+
   useEffect(() => {
     if (open === null) return;
     const onKey = (e: KeyboardEvent) => {
       if (menu) return e.key === "Escape" && setMenu("");
+      if ((e.target as HTMLElement)?.tagName === "TEXTAREA" && e.key !== "Escape") return;
       if (e.key === "Escape") close();
       if (e.key === "ArrowRight") go(1);
       if (e.key === "ArrowLeft") go(-1);
@@ -122,13 +167,19 @@ export default function Gallery({
   async function share() {
     if (!cur) return;
     const url = `${location.origin}/b/${cur.biz.slug}?photo=${cur.id}`;
+    const told = () => cur.social && noteShare(cur.id).catch(() => {});
     try {
-      if (navigator.share) return await navigator.share({ title: cur.biz.name, text: cur.text || `See this from ${cur.biz.name} on AdsVane`, url });
+      if (navigator.share) {
+        await navigator.share({ title: cur.biz.name, text: cur.text || `See this from ${cur.biz.name} on AdsVane`, url });
+        told();
+        return;
+      }
     } catch {
       return;
     }
     try {
       await navigator.clipboard.writeText(url);
+      told();
       setNote("Link copied. Paste it anywhere to share.");
     } catch {
       setNote(url);
@@ -154,6 +205,13 @@ export default function Gallery({
             <button key={p.id} type="button" className={`galitem${p.hidden ? " is-hidden" : ""}`} onClick={() => setOpen(i)} aria-label={`Open photo ${i + 1} of ${n}`}>
               <img src={p.url} alt={p.text || `${p.biz.name} photo ${i + 1}`} loading="lazy" />
               {p.hidden && <span className="galtag">Hidden</span>}
+              {owner && p.social && (p.likes > 0 || p.comments > 0 || p.reposts > 0) && (
+                <span className="galstats" aria-label={`${p.likes} likes, ${p.comments} comments, ${p.reposts} reposts`}>
+                  {p.likes > 0 && <span>♥ {p.likes}</span>}
+                  {p.comments > 0 && <span>💬 {p.comments}</span>}
+                  {p.reposts > 0 && <span>↻ {p.reposts}</span>}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -196,6 +254,7 @@ export default function Gallery({
               {cur.social && (
                 <>
                   <button type="button" className="pv-ic" aria-pressed={cur.liked} aria-label={cur.liked ? "Unlike" : "Like"} onClick={() => flip("like")}>{Icon.heart(cur.liked)}</button>
+                  <button type="button" className="pv-ic" aria-label="Comment" onClick={() => replyBox.current?.focus()}>{Icon.comment()}</button>
                   <button type="button" className="pv-ic" aria-pressed={cur.reposted} aria-label={cur.reposted ? "Undo repost" : "Repost to your page"} onClick={() => flip("repost")}>{Icon.repost(cur.reposted)}</button>
                 </>
               )}
@@ -217,6 +276,45 @@ export default function Gallery({
               </p>
             )}
             {note && <p className="pv-note" role="status">{note}</p>}
+            {cur.social && (
+              <section className="pv-talk" aria-label="Comments">
+                {talk === null ? (
+                  cur.comments > 0 && <p className="muted pv-tl">Loading comments…</p>
+                ) : (
+                  talk.map((c) => (
+                    <div key={c.id} className="pv-c">
+                      <p>
+                        <b>{c.name}</b> {c.body}
+                      </p>
+                      <span className="pv-cmeta">
+                        {ago(c.created_at)}
+                        {c.canDelete && (
+                          <button type="button" className="lnk" onClick={() => dropComment(c.id)}>Delete</button>
+                        )}
+                      </span>
+                    </div>
+                  ))
+                )}
+                <form className="pv-say" onSubmit={sendComment}>
+                  <textarea
+                    ref={replyBox}
+                    value={reply}
+                    onChange={(e) => setReply(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendComment(e);
+                      }
+                    }}
+                    rows={1}
+                    maxLength={1000}
+                    placeholder={talk && talk.length ? "Add a comment…" : "Be the first to comment… e.g. How much is this?"}
+                    aria-label="Add a comment"
+                  />
+                  <button type="submit" className="lnk" disabled={!reply.trim() || sending}>{sending ? "Posting…" : "Post"}</button>
+                </form>
+              </section>
+            )}
             <p className="pv-pos">{open + 1} of {n}</p>
           </article>
           {n > 1 && <button type="button" className="lb-nav next" onClick={() => go(1)} aria-label="Next photo">›</button>}

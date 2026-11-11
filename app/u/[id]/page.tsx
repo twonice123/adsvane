@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { memberName, memberPosts } from "@/lib/member";
 import Gallery from "@/app/components/Gallery";
+import { getMe } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export default async function Member({ params }: { params: Promise<{ id: string 
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getMe(supabase);
   const [name, posts] = await Promise.all([memberName(supabase, id), memberPosts(supabase, id, "reposts", user?.id || null)]);
   return (
     <div className="wrap narrow2" style={{ margin: "22px auto 44px" }}>

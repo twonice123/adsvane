@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import "./globals.css";
 import { siteUrl } from "@/lib/data";
+import { Suspense } from "react";
+import AccountBar from "./components/AccountBar";
+import NavProgress from "./components/NavProgress";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
@@ -15,11 +18,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <Suspense fallback={null}>
+          <NavProgress />
+        </Suspense>
         <header className="bar">
           <div className="wrap">
             <Link href="/" className="logo">
               Ads<span>Vane</span>
             </Link>
+            <AccountBar />
             <nav className="nav">
               <Link href="/find">Find services</Link>
               <Link href="/dashboard">Add your business</Link>

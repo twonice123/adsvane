@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PHOTO_BUCKET, focusText, parseFocus } from "@/lib/data";
+import { getMe } from "@/lib/auth";
 
 export type PhotoState = { error?: string; ok?: string };
 
@@ -12,9 +13,7 @@ type Kind = (typeof KINDS)[number];
 
 async function ownBusiness(businessId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getMe(supabase);
   if (!user) redirect("/login");
   const { data } = await supabase
     .from("businesses")
