@@ -23,6 +23,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav className="nav">
               <Link href="/find">Find services</Link>
               <Link href="/dashboard">Add your business</Link>
+              <Link href="/me" className="me-link" aria-label="My page">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+                Me
+              </Link>
             </nav>
           </div>
         </header>

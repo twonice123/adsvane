@@ -107,7 +107,7 @@ export default async function Directory({ searchParams }: { searchParams: Promis
     ratingsFor(supabase, ids),
     sponsoredIds(supabase, ids),
     ids.length
-      ? supabase.from("business_photos").select("business_id, url").in("business_id", ids).order("created_at", { ascending: false }).limit(1000)
+      ? supabase.from("business_photos").select("business_id, url").in("business_id", ids).eq("hidden", false).order("created_at", { ascending: false }).limit(1000)
       : Promise.resolve({ data: [] as { business_id: string; url: string }[] }),
   ]);
   const thumbs = new Map<string, string[]>();

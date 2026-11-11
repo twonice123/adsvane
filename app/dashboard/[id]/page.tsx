@@ -6,8 +6,9 @@ import { money, siteUrl, starText, isRunning, type Business, type Photo, type Pr
 import { ratingsFor } from "@/lib/queries";
 import { Logo } from "@/app/components/Logo";
 import { stopPromotion } from "../actions";
-import { removePhoto } from "../photo-actions";
 import PhotoUpload from "./photos/PhotoUpload";
+import Gallery from "@/app/components/Gallery";
+import { toPosts } from "@/lib/posts";
 import { Cover } from "@/app/components/Cover";
 import CopyLink from "./CopyLink";
 import ScrollTop from "@/app/components/ScrollTop";
@@ -32,6 +33,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
     ratingsFor(supabase, [id]),
   ]);
   const photos = (photoRows as Photo[]) || [];
+  const posts = await toPosts(supabase, photos, user!.id, () => ({ name: biz.name, slug: biz.slug, logo_url: biz.logo_url }));
   const running = ((promos as Promotion[]) || []).find(isRunning);
   const r = ratings.get(id);
   const reviewUrl = `${siteUrl()}/b/${biz.slug}/review`;
@@ -44,7 +46,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
         <ProfileTop
           biz={biz}
           isOwner
-          photoCount={photos.length + (biz.cover_url ? 1 : 0) + (biz.logo_url ? 1 : 0)}
+          photoCount={photos.filter((p) => !p.hidden).length + (biz.cover_url ? 1 : 0) + (biz.logo_url ? 1 : 0)}
           rating={r ? Number(r.rating) : null}
           reviewCount={r ? r.review_count : 0}
           sponsored={!!running}
@@ -88,25 +90,14 @@ export default async function Manage({ params, searchParams }: { params: Promise
 
           <section className="card" id="photos">
             <h2>Photos of your work</h2>
-            <p className="sub">Add as many photos as you like. You can pick several at once.{photos.length > 0 && ` You have ${photos.length}.`}</p>
-            <PhotoUpload businessId={id} kind="gallery" label="Add photos" multiple />
-            {photos.length === 0 ? (
-              <p className="muted" style={{ marginBottom: 0 }}>No photos yet. Businesses with photos get far more calls.</p>
-            ) : (
-              <div className="gal" style={{ marginTop: 16 }}>
-                {photos.map((p) => (
-                  <figure key={p.id} className="galitem">
-                    <img src={p.url} alt={p.caption || `${biz.name} photo`} loading="lazy" />
-                    <form action={removePhoto} className="galdel">
-                      <input type="hidden" name="business_id" value={id} />
-                      <input type="hidden" name="what" value="photo" />
-                      <input type="hidden" name="photo_id" value={p.id} />
-                      <button type="submit" aria-label="Remove this photo">Remove</button>
-                    </form>
-                  </figure>
-                ))}
-              </div>
-            )}
+            <p className="sub">Post photos of your work with a caption. Tap a photo to edit its caption, hide it or delete it.</p>
+            <PhotoUpload businessId={id} kind="gallery" label="New post" multiple />
+            <Gallery
+              photos={posts}
+              owner
+              loginNext={`/dashboard/${id}`}
+              empty={<p className="muted" style={{ marginBottom: 0 }}>No photos yet. Businesses with photos get far more calls.</p>}
+            />
           </section>
 
           <section className="card">

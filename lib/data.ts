@@ -34,6 +34,8 @@ export type Photo = {
   path: string;
   url: string;
   caption: string | null;
+  post_text: string | null;
+  hidden: boolean;
   created_at: string;
 };
 

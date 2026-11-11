@@ -63,8 +63,8 @@ export async function uploadPhoto(_prev: PhotoState, fd: FormData): Promise<Phot
     const url = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
 
     if (kind === "gallery") {
-      const caption = String(fd.get("caption") ?? "").trim().slice(0, 140) || null;
-      const { error } = await supabase.from("business_photos").insert({ business_id: biz.id, path, url, caption });
+      const post_text = String(fd.get("caption") ?? "").trim().slice(0, 2200) || null;
+      const { error } = await supabase.from("business_photos").insert({ business_id: biz.id, path, url, post_text });
       if (error) {
         await supabase.storage.from(PHOTO_BUCKET).remove([path]);
         return { error: "Couldn't save the photo. Please try again." };
@@ -85,7 +85,7 @@ export async function uploadPhoto(_prev: PhotoState, fd: FormData): Promise<Phot
   refresh(biz.id, biz.slug);
   if (kind === "logo") return { ok: "Profile picture updated." };
   if (kind === "cover") return { ok: "Cover photo updated." };
-  return { ok: `${added} photo${added === 1 ? "" : "s"} added.` };
+  return { ok: `${added} photo${added === 1 ? "" : "s"} posted.` };
 }
 
 export async function removePhoto(fd: FormData) {

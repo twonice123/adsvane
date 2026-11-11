@@ -6,6 +6,7 @@ import { AMENITIES, AMENITY_LABEL, DAYS, SOCIAL, STATES, socialLink, socialText,
 import { ratingsFor, sponsoredIds } from "@/lib/queries";
 import { Logo } from "@/app/components/Logo";
 import Gallery from "@/app/components/Gallery";
+import { toPosts } from "@/lib/posts";
 import { Cover } from "@/app/components/Cover";
 import ProfileTop from "@/app/components/ProfileTop";
 
@@ -42,7 +43,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
   const isOwner = !!user && user.id === biz.owner_id;
   const [{ data: reviews }, { data: photoRows }, ratings, sponsored] = await Promise.all([
     supabase.from("reviews").select("*").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(50),
-    supabase.from("business_photos").select("id, url, caption").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(1000),
+    supabase.from("business_photos").select("id, url, caption, post_text").eq("business_id", biz.id).eq("hidden", false).order("created_at", { ascending: false }).limit(1000),
     ratingsFor(supabase, [biz.id]),
     sponsoredIds(supabase, [biz.id]),
   ]);
@@ -52,13 +53,14 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
   const mapQ = encodeURIComponent(biz.show_address && biz.street ? address : `${biz.name} ${biz.city} ${biz.state}`);
   const amen = biz.amenities.filter((a) => AMENITY_LABEL[a]);
   const social = SOCIAL.map((s) => ({ ...s, link: socialLink(s.key, biz.social?.[s.key]) })).filter((s): s is typeof s & { link: string } => !!s.link);
-  const workPhotos = (photoRows as Pick<Photo, "id" | "url" | "caption">[]) || [];
+  const workPhotos = (photoRows as Pick<Photo, "id" | "url" | "caption" | "post_text">[]) || [];
   // Everything the business has posted shows under Photos, like a social page.
   const photos = [
     ...workPhotos,
     ...(biz.cover_url ? [{ id: "cover", url: biz.cover_url, caption: "Cover photo" }] : []),
     ...(biz.logo_url && /\/storage\/v1\/object\/public\//.test(biz.logo_url) ? [{ id: "logo", url: biz.logo_url, caption: "Profile picture" }] : []),
   ];
+  const posts = await toPosts(supabase, photos, user?.id || null, () => ({ name: biz.name, slug: biz.slug, logo_url: biz.logo_url }));
   const tel = biz.phone ? biz.phone.replace(/[^\d+]/g, "") : "";
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapQ}`;
 
@@ -105,7 +107,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
           <section className="card" id="photos">
             <h2>Photos</h2>
             {photos.length > 0 ? (
-              <Gallery photos={photos} name={biz.name} initial={60} />
+              <Gallery photos={posts} owner={isOwner} loginNext={`/b/${biz.slug}`} initial={60} />
             ) : (
               <p className="muted" style={{ margin: 0 }}>{biz.name} hasn&apos;t added photos yet.</p>
             )}
