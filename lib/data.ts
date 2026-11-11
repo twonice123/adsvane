@@ -65,6 +65,8 @@ export type Promotion = {
   age_min?: number | null;
   age_max?: number | null;
   photo_ids?: string[];
+  goal?: "profile" | "website";
+  audience_name?: string | null;
   status: "active" | "stopped" | "completed";
   starts_at: string;
   ends_at: string;

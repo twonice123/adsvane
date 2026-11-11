@@ -105,16 +105,18 @@ export default async function Directory({ searchParams }: { searchParams: Promis
   // even if the shop itself is somewhere else.
   const { data: promoRows } = await supabase
     .from("promotions")
-    .select("business_id,status,ends_at,show_in_search,targets")
+    .select("business_id,status,ends_at,show_in_search,targets,goal")
     .eq("status", "active")
     .eq("show_in_search", true)
     .gt("ends_at", new Date().toISOString());
   const region = hdr.get("x-vercel-ip-country") === "US" ? hdr.get("x-vercel-ip-country-region") : null;
   const searchState = place ? splitPlace(place).state || null : origin ? region : null;
   const sponsored = new Set<string>();
+  const toSite = new Set<string>();
   const inPool = new Set(pool.map((b) => b.id));
-  for (const p of ((promoRows as Pick<Promotion, "business_id" | "status" | "ends_at" | "targets">[]) || []).filter(isRunning)) {
+  for (const p of ((promoRows as Pick<Promotion, "business_id" | "status" | "ends_at" | "targets" | "goal">[]) || []).filter(isRunning)) {
     if (!reaches(p.targets, origin, searchState)) continue;
+    if (p.goal === "website") toSite.add(p.business_id);
     if (inPool.has(p.business_id)) sponsored.add(p.business_id);
     else if (p.targets?.length && (origin || searchState)) {
       const b = all.find((x) => x.id === p.business_id);
@@ -181,6 +183,7 @@ export default async function Directory({ searchParams }: { searchParams: Promis
         {sorted.map((b) => {
           const r = ratings.get(b.id);
           const s = sponsored.has(b.id);
+          const site = s && toSite.has(b.id) && b.website ? b.website : null;
           const pics = [...(thumbs.get(b.id) || []), ...(b.cover_url ? [b.cover_url] : [])].slice(0, 10);
           const d = dist.get(b.id);
           const showStreet = b.show_address && b.street;
@@ -193,7 +196,7 @@ export default async function Directory({ searchParams }: { searchParams: Promis
               <Logo name={b.name} url={b.logo_url} focus={b.logo_focus} />
               <div>
                 <h3>
-                  <Link href={`/b/${b.slug}`}>{b.name}</Link>
+                  {site ? <a href={site} target="_blank" rel="sponsored noopener">{b.name}</a> : <Link href={`/b/${b.slug}`}>{b.name}</Link>}
                   {s && <span className="spon">Sponsored</span>}
                 </h3>
                 <p>
@@ -222,7 +225,11 @@ export default async function Directory({ searchParams }: { searchParams: Promis
                 </Link>
               )}
               <div className="go">
-                <Link className="b" href={`/b/${b.slug}`}>View profile</Link>
+                {site ? (
+                  <a className="b" href={site} target="_blank" rel="sponsored noopener">Visit website</a>
+                ) : (
+                  <Link className="b" href={`/b/${b.slug}`}>View profile</Link>
+                )}
                 {tel && <a className="b ghost" href={`tel:${tel}`}>Call</a>}
               </div>
             </div>

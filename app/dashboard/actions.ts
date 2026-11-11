@@ -151,7 +151,9 @@ export async function startPromotion(_prev: PromoState, fd: FormData): Promise<P
         const label = t.label.trim().slice(0, 160);
         const radius = Math.round(Number(t.radius));
         if (!Number.isFinite(radius) || radius < 1 || radius > MAX_RADIUS) return { error: `Pick a distance between 1 and ${MAX_RADIUS} miles for ${label}.` };
-        const pt = await geocode(label);
+        const lat = Number(t.lat), lng = Number(t.lng);
+        const given = Number.isFinite(lat) && Number.isFinite(lng) && lat > 17 && lat < 72 && lng > -180 && lng < -64 ? { lat, lng } : null;
+        const pt = given || (await geocode(label));
         if (!pt) return { error: `We couldn't find "${label}" on the map. Pick it from the suggestions as you type.` };
         targets.push({ kind: "place", label, lat: pt.lat, lng: pt.lng, radius });
       }
@@ -161,13 +163,21 @@ export async function startPromotion(_prev: PromoState, fd: FormData): Promise<P
   const radius = Math.min(30, Math.max(2, ...targets.map((t) => (t.kind === "place" ? t.radius : 30))));
 
   const ageMin = Number(fd.get("age_min"));
-  const ageMax = Number(fd.get("age_max"));
-  if (!Number.isInteger(ageMin) || !Number.isInteger(ageMax) || ageMin < AGE_MIN || ageMax > AGE_MAX || ageMin > ageMax) return { error: "Pick an age range." };
+  if (!Number.isInteger(ageMin) || ageMin < AGE_MIN || ageMin > AGE_MAX) return { error: "Pick a minimum age." };
+  const goal = fd.get("goal") === "website" ? "website" : "profile";
+  const audienceName = str(fd, "audience_name", 60);
+  const saveAudience = fd.get("save_audience") === "on" && !!audienceName;
 
   const photoIds = String(fd.get("photo_ids") || "").split(",").filter((x) => /^[0-9a-f-]{36}$/.test(x)).slice(0, 5);
 
-  const { data: biz } = await supabase.from("businesses").select("id").eq("id", businessId).eq("owner_id", user.id).maybeSingle();
+  const { data: biz } = await supabase.from("businesses").select("id, website").eq("id", businessId).eq("owner_id", user.id).maybeSingle();
   if (!biz) return { error: "Business not found." };
+  if (goal === "website" && !biz.website) return { error: "Add your website in Edit profile first, or pick Visit your profile." };
+  if (saveAudience) {
+    const { data: had } = await supabase.from("audiences").select("id").eq("business_id", businessId).eq("name", audienceName).maybeSingle();
+    if (had) await supabase.from("audiences").update({ targets, age_min: ageMin }).eq("id", had.id);
+    else await supabase.from("audiences").insert({ business_id: businessId, name: audienceName, targets, age_min: ageMin });
+  }
   const { data: own } = photoIds.length
     ? await supabase.from("business_photos").select("id").eq("business_id", businessId).in("id", photoIds)
     : { data: [] as { id: string }[] };
@@ -184,7 +194,8 @@ export async function startPromotion(_prev: PromoState, fd: FormData): Promise<P
     radius_miles: radius,
     targets,
     age_min: ageMin,
-    age_max: ageMax === AGE_MAX ? 99 : ageMax,
+    goal,
+    audience_name: audienceName || null,
     photo_ids: adPhotos,
     show_in_search: inSearch,
     show_in_email: inEmail,
