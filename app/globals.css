@@ -346,3 +346,12 @@ button.galitem:hover img{transform:scale(1.04)}
 @media (max-width:600px){.locask{align-items:flex-end;padding:0}.locask-box{width:100%;border-radius:22px 22px 0 0;padding-bottom:calc(22px + env(safe-area-inset-bottom))}}
 @keyframes lk-in{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){.locask{animation:none}}
+/* Page loading */
+.pgload{display:flex;flex-direction:column;align-items:center;gap:14px;padding:48px 16px 60px;color:var(--brand);font-weight:600}
+.spin{width:34px;height:34px;border-radius:50%;border:4px solid var(--brand-2);border-top-color:var(--brand);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sk{width:100%;max-width:720px;border-radius:12px;background:linear-gradient(90deg,#f1ebfd 25%,#f8f5ff 50%,#f1ebfd 75%);background-size:200% 100%;animation:skm 1.2s ease-in-out infinite}
+.sk-h{height:28px;max-width:320px;margin-top:10px}
+.sk-row{height:84px}
+@keyframes skm{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.spin,.sk{animation:none}}
