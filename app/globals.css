@@ -516,6 +516,6 @@ button.galitem:hover img{transform:scale(1.04)}
 .pbar .upl .okline{animation:pbar-fade 3.5s forwards;pointer-events:none}
 @keyframes pbar-fade{0%,75%{opacity:1}100%{opacity:0;visibility:hidden}}
 .pbar{gap:10px}
-.pbar-btn{flex:none;border:1.5px solid #c9bfe0;background:#fff;color:var(--ink);border-radius:999px;padding:8px 14px;font:600 14px/1.2 Inter,system-ui,sans-serif;text-decoration:none;white-space:nowrap}
-.pbar-btn:hover{border-color:var(--brand);color:var(--brand)}
+.pbar-btn{flex:none;border:1.5px solid #c9bfe0;background:#fff;color:var(--brand);border-radius:999px;padding:8px 14px;font:600 14px/1.2 Inter,system-ui,sans-serif;text-decoration:none;white-space:nowrap}
+.pbar-btn:hover{border-color:var(--brand);background:#f7f4fd}
 @media (max-width:440px){.pbar{padding-left:12px;gap:8px}.pbar-main b{font-size:14px;white-space:nowrap}.pbar-main small{font-size:12px;white-space:nowrap}.pbar-btn{padding:7px 10px;font-size:13px}.pbar-plus{width:44px;height:34px}}
