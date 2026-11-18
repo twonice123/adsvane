@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 
 export default async function Signup() {
   const supabase = await createClient();
-  if (await getMe(supabase)) redirect("/dashboard");
+  // Already signed in: skip email and password and go straight to the new business form.
+  if (await getMe(supabase)) redirect("/dashboard/new");
   return (
     <div className="wrap narrow" style={{ margin: "26px auto 50px" }}>
       <div className="card su-card">

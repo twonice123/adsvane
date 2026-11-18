@@ -70,7 +70,7 @@ export default async function Landing() {
             </div>
             <div className="lp-cta">
               <Link href="/find" className="lp-cta-find">Find services</Link>
-              <Link href={me ? "/dashboard" : "/signup"} className="lp-cta-biz">{me ? "Go to your business" : "Create your business profile"}</Link>
+              <Link href="/signup" className="lp-cta-biz">Create your business profile</Link>
             </div>
             {!me && <p className="lp-own-in">Have a business account? <Link href="/login">Log in</Link></p>}
           </div>
@@ -129,7 +129,7 @@ export default async function Landing() {
               <li>Promote your page and show up on the AdsVane Billboard</li>
             </ul>
             <div className="lp-forbiz-btns">
-              <Link href={me ? "/dashboard" : "/signup"} className="b">Create your business profile</Link>
+              <Link href="/signup" className="b">Create your business profile</Link>
               {!me && <Link href="/login" className="b ghost">Log in</Link>}
             </div>
           </div>
