@@ -26,6 +26,16 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const guarded = path.startsWith("/dashboard") || path === "/me" || path === "/notifications" || path === "/archive" || path === "/settings";
+  // Customers create a free account before they search or open business pages.
+  // (Review links from a shop's QR code stay open.)
+  const browse = path === "/find" || (path.startsWith("/b/") && !path.endsWith("/review")) || path.startsWith("/u/");
+  if (!user && browse) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/join";
+    url.search = "";
+    url.searchParams.set("next", path + request.nextUrl.search);
+    return NextResponse.redirect(url);
+  }
   if (!user && guarded) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -63,5 +73,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/me", "/notifications", "/archive", "/settings", "/login", "/auth/:path*"],
+  matcher: ["/dashboard/:path*", "/me", "/find", "/b/:path*", "/u/:path*", "/notifications", "/archive", "/settings", "/login", "/auth/:path*"],
 };

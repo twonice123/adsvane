@@ -11,12 +11,14 @@ export default function FrameEditor({
   url,
   focus,
   className = "chip",
+  openOnNew = false,
 }: {
   businessId: string;
   kind: "cover" | "logo";
   url: string;
   focus: string | null;
   className?: string;
+  openOnNew?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [f, setF] = useState<Focus>(parseFocus(focus));
@@ -32,6 +34,20 @@ export default function FrameEditor({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
+
+  // Right after someone picks a new picture, open the adjust screen so they can frame it.
+  useEffect(() => {
+    if (!openOnNew) return;
+    const key = "fe-seen:" + url;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      return;
+    }
+    begin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, openOnNew]);
 
   function begin() {
     setF(parseFocus(focus));

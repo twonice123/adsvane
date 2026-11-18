@@ -14,7 +14,7 @@ async function origin() {
 }
 
 // Create a business owner's login: email, then password. Like Instagram, they're signed in right away.
-export async function createAccount(email: string, password: string): Promise<AuthResult> {
+export async function createAccount(email: string, password: string, next = "/dashboard/new"): Promise<AuthResult> {
   const e = String(email ?? "").trim().toLowerCase().slice(0, 200);
   const p = String(password ?? "");
   if (!EMAIL.test(e)) return { error: "Enter a valid email address." };
@@ -24,7 +24,7 @@ export async function createAccount(email: string, password: string): Promise<Au
   const { data, error } = await supabase.auth.signUp({
     email: e,
     password: p,
-    options: { emailRedirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent("/dashboard/new")}` },
+    options: { emailRedirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent(next.startsWith("/") && !next.startsWith("//") ? next : "/")}` },
   });
   if (error) {
     if (/already|registered|exists/i.test(error.message)) return { exists: true, error: "There's already an account with this email. Log in instead." };

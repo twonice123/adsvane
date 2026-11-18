@@ -1,10 +1,9 @@
 "use client";
-import Link from "next/link";
 import { useActionState } from "react";
 import { SOCIAL, socialLink, type Business } from "@/lib/data";
 import { saveProfileSetup, type FormState } from "../../actions";
 
-export default function ProfileSetupForm({ biz }: { biz: Business }) {
+export default function ProfileSetupForm({ biz, hasPics }: { biz: Business; hasPics: boolean }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveProfileSetup, {});
   return (
     <form action={action}>
@@ -30,10 +29,10 @@ export default function ProfileSetupForm({ biz }: { biz: Business }) {
         <input id="ps-web" name="website" type="text" inputMode="url" autoComplete="url" autoCapitalize="none" defaultValue={biz.website || ""} placeholder="yourbusiness.com" />
       </div>
 
+      {!hasPics && <p className="note" role="status">Add your profile picture and cover photo above to continue.</p>}
       {state.error && <p className="err" role="alert">{state.error}</p>}
       <div className="st-btns">
-        <Link href={`/dashboard/${biz.id}/setup?step=photos`} className="b ghost">Skip</Link>
-        <button className="b" type="submit" disabled={pending}>{pending ? "Saving…" : "Save and continue"}</button>
+        <button className="b" type="submit" disabled={pending || !hasPics}>{pending ? "Saving…" : "Save and continue"}</button>
       </div>
     </form>
   );

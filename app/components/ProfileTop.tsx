@@ -13,6 +13,7 @@ export default async function ProfileTop({
   reviewCount,
   isOwner,
   sponsored = false,
+  saved = null,
 }: {
   biz: Business;
   cover: React.ReactNode;
@@ -22,6 +23,7 @@ export default async function ProfileTop({
   reviewCount: number;
   isOwner: boolean;
   sponsored?: boolean;
+  saved?: boolean | null;
 }) {
   const profileUrl = `${siteUrl()}/b/${biz.slug}`;
   const qr = await QRCode.toString(profileUrl, { type: "svg", margin: 1, color: { dark: "#0d0b12", light: "#ffffff" } });
@@ -70,6 +72,7 @@ export default async function ProfileTop({
       </div>
       <ProfileButtons
         isOwner={isOwner}
+        saved={saved}
         profileUrl={profileUrl}
         qr={qr}
         info={{

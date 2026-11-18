@@ -8,6 +8,7 @@ import { Logo } from "./Logo";
 import { Cover } from "./Cover";
 import PhotoUpload from "@/app/dashboard/[id]/photos/PhotoUpload";
 import FrameEditor from "@/app/dashboard/[id]/FrameEditor";
+import SaveBiz from "./SaveBiz";
 import { removePhoto } from "@/app/dashboard/photo-actions";
 import { useBackClose } from "@/lib/useBackClose";
 
@@ -188,9 +189,11 @@ export default function ProfileButtons({
   isOwner,
   profileUrl,
   qr,
+  saved = null,
 }: {
   info: ProfileInfo;
   isOwner: boolean;
+  saved?: boolean | null;
   profileUrl: string;
   qr: string;
 }) {
@@ -205,7 +208,8 @@ export default function ProfileButtons({
     <>
       <div className="pbtns">
         {isOwner && <button type="button" className="pb" onClick={() => setOpen("edit")}>Edit profile</button>}
-        <button type="button" className="pb" onClick={() => setOpen("share")}>Share profile</button>
+        {!isOwner && saved !== null && <SaveBiz businessId={info.id} saved={saved} />}
+        <button type="button" className="pb" onClick={() => setOpen("share")}>{isOwner ? "Share profile" : "Share"}</button>
         <button type="button" className={isOwner ? "pb" : "pb pb-main"} onClick={() => setOpen("contact")}>Contact</button>
       </div>
 

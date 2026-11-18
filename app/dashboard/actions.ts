@@ -322,6 +322,8 @@ export async function saveProfileSetup(_prev: FormState, fd: FormData): Promise<
     if (!link) return { error: `That ${s.label} doesn't look right. Type your ${s.label} name, like @yourpage.` };
     social[s.key] = link;
   }
+  const { data: pics } = await supabase.from("businesses").select("logo_url, cover_url").eq("id", id).eq("owner_id", user.id).maybeSingle();
+  if (!pics?.logo_url || !pics?.cover_url) return { error: "Add your profile picture and cover photo first." };
   const { data, error } = await supabase
     .from("businesses")
     .update({ phone, website, description: str(fd, "description", 2000) || null, social })

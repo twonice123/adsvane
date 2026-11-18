@@ -45,6 +45,9 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
 
   const user = await getMe(supabase);
   const isOwner = !!user && user.id === biz.owner_id;
+  const savedBiz = user && !isOwner
+    ? !!(await supabase.from("business_saves").select("business_id").eq("user_id", user.id).eq("business_id", biz.id).maybeSingle()).data
+    : null;
   const [{ data: reviews }, { data: photoRows }, ratings, sponsored, reposts, saved] = await Promise.all([
     supabase.from("reviews").select("*").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(50),
     supabase.from("business_photos").select("id, url, caption, post_text, post_id, position, view_count, poster_url").eq("business_id", biz.id).eq("hidden", false).order("created_at", { ascending: false }).limit(1000),
@@ -98,6 +101,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ slug:
           rating={r ? Number(r.rating) : null}
           reviewCount={r ? r.review_count : 0}
           isOwner={isOwner}
+          saved={savedBiz}
           sponsored={sponsored.has(biz.id)}
         />
         <ProfileTabs tabs={profileTabs(isOwner)} />
