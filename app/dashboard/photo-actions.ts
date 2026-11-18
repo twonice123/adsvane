@@ -127,3 +127,38 @@ export async function saveFocus(businessId: string, what: "logo" | "cover", focu
   refresh(biz.id, biz.slug);
   return {};
 }
+
+// A video the owner's phone already put in storage (videos are too big to
+// pass through our server). We check the files are theirs, then post it.
+export async function addVideo(fd: FormData): Promise<PhotoState> {
+  const businessId = String(fd.get("business_id") ?? "");
+  const path = String(fd.get("path") ?? "");
+  const poster = String(fd.get("poster") ?? "");
+  const { supabase, biz } = await ownBusiness(businessId);
+  if (!biz) return { error: "Business not found." };
+  const okPath = (p: string, ext: RegExp) => p.startsWith(`${biz.id}/gallery-`) && ext.test(p) && !p.includes("..");
+  if (!okPath(path, /\.(mp4|mov|webm)$/) || (poster && !okPath(poster, /\.jpg$/))) return { error: "Couldn't post the video. Please try again." };
+  const name = path.slice(biz.id.length + 1);
+  const { data: found } = await supabase.storage.from(PHOTO_BUCKET).list(biz.id, { search: name, limit: 1 });
+  if (!found?.length) return { error: "The video didn't finish uploading. Please try again." };
+
+  const url = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+  const poster_url = poster ? supabase.storage.from(PHOTO_BUCKET).getPublicUrl(poster).data.publicUrl : null;
+  const post_text = String(fd.get("caption") ?? "").trim().slice(0, 2200) || null;
+  const postId = String(fd.get("post_id") ?? "");
+  const pos = Number(fd.get("start") ?? 0);
+  const { error } = await supabase.from("business_photos").insert({
+    business_id: biz.id,
+    path,
+    url,
+    poster_url,
+    post_text,
+    ...(/^[0-9a-f-]{36}$/i.test(postId) ? { post_id: postId, position: Math.min(Math.max(pos, 0), 999) } : {}),
+  });
+  if (error) {
+    await supabase.storage.from(PHOTO_BUCKET).remove([path, ...(poster ? [poster] : [])]);
+    return { error: "Couldn't save the video. Please try again." };
+  }
+  refresh(biz.id, biz.slug);
+  return { ok: "Posted." };
+}

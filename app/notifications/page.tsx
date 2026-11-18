@@ -22,11 +22,11 @@ export default async function Notifications() {
   const { data } = await supabase.from("notifications").select("id, kind, actor_name, photo_id, snippet, read_at, created_at").eq("recipient", user.id).order("created_at", { ascending: false }).limit(100);
   const list = (data as N[]) || [];
   const photoIds = [...new Set(list.map((n) => n.photo_id).filter(Boolean))] as string[];
-  const { data: photos } = photoIds.length ? await supabase.from("business_photos").select("id, url, business_id").in("id", photoIds) : { data: [] };
+  const { data: photos } = photoIds.length ? await supabase.from("business_photos").select("id, url, business_id, poster_url").in("id", photoIds) : { data: [] };
   const bizIds = [...new Set(((photos as { business_id: string }[]) || []).map((p) => p.business_id))];
   const { data: biz } = bizIds.length ? await supabase.from("businesses").select("id, slug").in("id", bizIds) : { data: [] };
   const slug = new Map(((biz as { id: string; slug: string }[]) || []).map((b) => [b.id, b.slug]));
-  const photo = new Map(((photos as { id: string; url: string; business_id: string }[]) || []).map((p) => [p.id, { url: p.url, slug: slug.get(p.business_id) }]));
+  const photo = new Map(((photos as { id: string; url: string; business_id: string; poster_url: string | null }[]) || []).map((p) => [p.id, { url: p.poster_url || p.url, slug: slug.get(p.business_id) }]));
   if (list.some((n) => !n.read_at)) await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("recipient", user.id).is("read_at", null);
 
   return (

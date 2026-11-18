@@ -1,7 +1,48 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { uploadPhoto, type PhotoState } from "../../photo-actions";
+import { addVideo, uploadPhoto, type PhotoState } from "../../photo-actions";
+import { browserClient } from "@/lib/supabase/client";
+import { PHOTO_BUCKET } from "@/lib/data";
+
+const MAX_SECONDS = 15;
+const MAX_VIDEO_MB = 50;
+const VIDEO_EXT: Record<string, string> = { "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" };
+
+// How long a video is, and a still picture from its first moment.
+function inspectVideo(file: File): Promise<{ seconds: number; poster: Blob | null }> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = "auto";
+    let seconds = NaN;
+    const done = (poster: Blob | null) => {
+      URL.revokeObjectURL(url);
+      resolve({ seconds, poster });
+    };
+    v.onloadedmetadata = () => {
+      seconds = v.duration;
+      v.currentTime = Math.min(0.1, (v.duration || 1) / 2);
+    };
+    v.onseeked = () => {
+      try {
+        const scale = Math.min(1, 1080 / Math.max(v.videoWidth, v.videoHeight));
+        const c = document.createElement("canvas");
+        c.width = Math.round(v.videoWidth * scale);
+        c.height = Math.round(v.videoHeight * scale);
+        c.getContext("2d")!.drawImage(v, 0, 0, c.width, c.height);
+        c.toBlob((b) => done(b), "image/jpeg", 0.82);
+      } catch {
+        done(null);
+      }
+    };
+    v.onerror = () => done(null);
+    setTimeout(() => done(null), 15000);
+    v.src = url;
+  });
+}
 
 // Shrinks a photo in the browser so uploads are quick on phones.
 async function shrink(file: File, maxSide: number): Promise<File> {
@@ -53,6 +94,19 @@ export default function PhotoUpload({
     const picked = Array.from(e.target.files || []);
     e.target.value = "";
     if (!picked.length) return;
+    const vids = picked.filter((f) => f.type.startsWith("video/"));
+    if (vids.length && kind !== "gallery") {
+      setState({ error: "Please pick a photo here." });
+      return;
+    }
+    if (vids.some((f) => !VIDEO_EXT[f.type])) {
+      setState({ error: "Please use an MP4 or MOV video." });
+      return;
+    }
+    if (vids.some((f) => f.size > MAX_VIDEO_MB * 1024 * 1024)) {
+      setState({ error: `That video is too big. Videos can be up to ${MAX_VIDEO_MB} MB.` });
+      return;
+    }
     // Work photos: write a caption first, like a social post.
     if (kind === "gallery") {
       setCaption("");
@@ -69,32 +123,77 @@ export default function PhotoUpload({
 
   async function send(picked: File[], text: string) {
     setBusy(true);
-    // Send gallery photos a few at a time so each request stays small.
+    setState({});
+    // Check video lengths first, so nothing is posted if one is too long.
+    const info = new Map<File, { seconds: number; poster: Blob | null }>();
+    for (const f of picked) {
+      if (!f.type.startsWith("video/")) continue;
+      const i = await inspectVideo(f);
+      if (!(i.seconds <= MAX_SECONDS + 0.5)) {
+        setState({ error: Number.isFinite(i.seconds) ? `Videos can be up to ${MAX_SECONDS} seconds. That one is ${Math.round(i.seconds)} seconds. Trim it on your phone and try again.` : "We couldn't read that video. Please try an MP4 or MOV video." });
+        setBusy(false);
+        return;
+      }
+      info.set(f, i);
+    }
+    // Several files posted together share a post id, in the order picked.
     const postId = picked.length > 1 && kind === "gallery" ? crypto.randomUUID() : "";
     let start = 0;
-    const batches: File[][] = [];
-    for (let i = 0; i < picked.length; i += 4) batches.push(picked.slice(i, i + 4));
-    for (const batch of batches) {
+    let r: PhotoState = {};
+    let batch: File[] = [];
+    const base = () => {
       const b = new FormData();
       b.set("business_id", businessId);
-      b.set("kind", kind);
       if (text.trim()) b.set("caption", text.trim());
       if (postId) {
         b.set("post_id", postId);
         b.set("start", String(start));
       }
-      start += batch.length;
+      return b;
+    };
+    const flush = async () => {
+      if (!batch.length) return;
+      const b = base();
+      b.set("kind", kind);
       for (const f of batch) b.append("file", await shrink(f, max));
-      let r: PhotoState;
       try {
         r = await uploadPhoto({}, b);
       } catch {
         r = { error: "Couldn't upload the photo. Please check your connection and try again." };
       }
-      setState(r);
+      start += batch.length;
+      batch = [];
+    };
+    for (const f of picked) {
       if (r.error) break;
+      if (!f.type.startsWith("video/")) {
+        batch.push(f);
+        if (batch.length === 4) await flush();
+        continue;
+      }
+      await flush();
+      if (r.error) break;
+      // Videos go straight from the phone to storage (they're too big for our server).
+      const id = crypto.randomUUID();
+      const path = `${businessId}/gallery-${id}.${VIDEO_EXT[f.type]}`;
+      const poster = info.get(f)?.poster;
+      const posterPath = poster ? `${businessId}/gallery-${id}.jpg` : "";
+      try {
+        const sb = browserClient();
+        const up = await sb.storage.from(PHOTO_BUCKET).upload(path, f, { contentType: f.type, cacheControl: "31536000" });
+        if (up.error) throw up.error;
+        if (poster) await sb.storage.from(PHOTO_BUCKET).upload(posterPath, poster, { contentType: "image/jpeg", cacheControl: "31536000" });
+        const b = base();
+        b.set("path", path);
+        if (posterPath) b.set("poster", posterPath);
+        r = await addVideo(b);
+      } catch {
+        r = { error: "Couldn't upload the video. Please check your connection and try again." };
+      }
+      start += 1;
     }
-    if (kind === "gallery") setState((st) => (st.error ? st : { ok: picked.length > 1 ? `Posted ${picked.length} photos as one post.` : "Posted." }));
+    if (!r.error) await flush();
+    setState(r.error ? r : kind === "gallery" ? { ok: picked.length > 1 ? `Posted ${picked.length} as one post.` : "Posted." } : r);
     setBusy(false);
     router.refresh();
   }
@@ -102,7 +201,7 @@ export default function PhotoUpload({
   const working = busy;
   return (
     <div className={`upl ${wrapClass}`}>
-      <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple={multiple} onChange={onPick} hidden />
+      <input ref={input} type="file" accept={kind === "gallery" ? "image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm" : "image/jpeg,image/png,image/webp,image/heic,image/heif"} multiple={multiple} onChange={onPick} hidden />
       <button type="button" className={className} disabled={working} onClick={() => input.current?.click()} aria-label={ariaLabel} aria-busy={working}>
         {working ? (label === "+" ? <span className="spin" aria-hidden="true" /> : kind === "gallery" ? "Posting…" : "Uploading…") : label}
       </button>
@@ -114,7 +213,7 @@ export default function PhotoUpload({
               <h2>New post</h2>
             </div>
             <div className={`np-pics${pending2.urls.length === 1 ? " one" : ""}`}>
-              {pending2.urls.map((u) => <img key={u} src={u} alt="" />)}
+              {pending2.files.map((f, i) => (f.type.startsWith("video/") ? <video key={pending2.urls[i]} src={pending2.urls[i]} muted playsInline autoPlay loop /> : <img key={pending2.urls[i]} src={pending2.urls[i]} alt="" />))}
             </div>
             <textarea
               className="np-text"
@@ -127,7 +226,7 @@ export default function PhotoUpload({
               autoFocus
             />
             <p className="muted np-hint">
-              {pending2.files.length > 1 ? `${pending2.files.length} photos in one post. People swipe to see them all. ` : ""}
+              {pending2.files.length > 1 ? `${pending2.files.length} in one post. People swipe to see them all. ` : ""}
               {caption.length}/2200
             </p>
             <button

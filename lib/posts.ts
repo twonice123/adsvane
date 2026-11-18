@@ -11,10 +11,13 @@ type Row = {
   post_id?: string | null;
   position?: number | null;
   view_count?: number | null;
+  poster_url?: string | null;
 };
 
+export const isVideo = (url: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url);
+
 // Photos posted together share a post_id; show them as one post, first photo in front.
-export function group<T extends Row>(rows: T[]): (T & { pics: string[] })[] {
+export function group<T extends Row>(rows: T[]): (T & { pics: string[]; posters: (string | null)[] })[] {
   const order: string[] = [];
   const by = new Map<string, T[]>();
   for (const r of rows) {
@@ -27,7 +30,7 @@ export function group<T extends Row>(rows: T[]): (T & { pics: string[] })[] {
   }
   return order.map((k) => {
     const g = by.get(k)!.sort((a, b) => (a.position || 0) - (b.position || 0));
-    return { ...g[0], pics: g.map((x) => x.url) };
+    return { ...g[0], pics: g.map((x) => x.url), posters: g.map((x) => x.poster_url || null) };
   });
 }
 type Biz = Post["biz"];
@@ -62,6 +65,7 @@ export async function toPosts(supabase: SupabaseClient, photos: Row[], userId: s
     id: r.id,
     url: r.url,
     pics: r.pics,
+    posters: r.posters,
     views: r.view_count || 0,
     text: r.post_text || (r.caption && r.caption !== "Cover photo" ? r.caption : null),
     hidden: !!r.hidden,

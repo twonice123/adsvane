@@ -29,15 +29,15 @@ async function ownPhoto(photoId: string) {
   const supabase = await createClient();
   const user = await getMe(supabase);
   if (!user || !UUID.test(photoId)) return null;
-  const { data: photo } = await supabase.from("business_photos").select("id, business_id, path, post_id").eq("id", photoId).maybeSingle();
+  const { data: photo } = await supabase.from("business_photos").select("id, business_id, path, post_id, poster_url").eq("id", photoId).maybeSingle();
   if (!photo) return null;
   const { data: biz } = await supabase.from("businesses").select("id, slug").eq("id", photo.business_id).eq("owner_id", user.id).maybeSingle();
   if (!biz) return null;
   // Every photo in the same post.
   const { data: all } = photo.post_id
-    ? await supabase.from("business_photos").select("id, path").eq("post_id", photo.post_id).eq("business_id", photo.business_id)
-    : { data: [{ id: photo.id, path: photo.path }] };
-  return { supabase, photo: photo as { id: string; business_id: string; path: string }, biz: biz as { id: string; slug: string }, all: (all as { id: string; path: string }[]) || [] };
+    ? await supabase.from("business_photos").select("id, path, poster_url").eq("post_id", photo.post_id).eq("business_id", photo.business_id)
+    : { data: [{ id: photo.id, path: photo.path, poster_url: photo.poster_url }] };
+  return { supabase, photo: photo as { id: string; business_id: string; path: string }, biz: biz as { id: string; slug: string }, all: (all as { id: string; path: string; poster_url: string | null }[]) || [] };
 }
 function refresh(b: { id: string; slug: string }) {
   revalidatePath(`/dashboard/${b.id}`);
@@ -63,7 +63,9 @@ export async function deletePhoto(photoId: string): Promise<{ error?: string }> 
   if (!own) return { error: "You can only delete your own photos." };
   const { error } = await own.supabase.from("business_photos").delete().in("id", own.all.map((x) => x.id)).eq("business_id", own.biz.id);
   if (error) return { error: "Couldn't delete. Please try again." };
-  await own.supabase.storage.from(PHOTO_BUCKET).remove(own.all.map((x) => x.path));
+  const marker = `/storage/v1/object/public/${PHOTO_BUCKET}/`;
+  const posters = own.all.map((x) => (x.poster_url && x.poster_url.includes(marker) ? decodeURIComponent(x.poster_url.split(marker)[1]) : null)).filter((x): x is string => !!x && x.startsWith(own.biz.id + "/"));
+  await own.supabase.storage.from(PHOTO_BUCKET).remove([...own.all.map((x) => x.path), ...posters]);
   refresh(own.biz);
   return {};
 }

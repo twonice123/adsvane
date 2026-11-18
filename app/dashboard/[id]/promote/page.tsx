@@ -5,7 +5,7 @@ import { AMENITY_LABEL, type Business } from "@/lib/data";
 import { ratingsFor } from "@/lib/queries";
 import PromoteForm, { type Audience } from "./PromoteForm";
 import { getMe } from "@/lib/auth";
-import { group } from "@/lib/posts";
+import { group, isVideo } from "@/lib/posts";
 import { addressText } from "@/lib/geo";
 import { isRunning, type Promotion } from "@/lib/data";
 import { stopPromotion } from "../../actions";
@@ -24,10 +24,10 @@ export default async function Promote({ params }: { params: Promise<{ id: string
     supabase.rpc("optin_count"),
     ratingsFor(supabase, [id]),
     supabase.from("promotions").select("*").eq("business_id", id).order("created_at", { ascending: false }).limit(5),
-    supabase.from("business_photos").select("id, url, caption, post_id, position").eq("business_id", id).eq("hidden", false).order("created_at", { ascending: false }).limit(200),
+    supabase.from("business_photos").select("id, url, caption, post_id, position, poster_url").eq("business_id", id).eq("hidden", false).order("created_at", { ascending: false }).limit(200),
     supabase.from("audiences").select("id, name, targets, age_min").eq("business_id", id).order("created_at", { ascending: false }).limit(20),
   ]);
-  const photos = group((photoRows as { id: string; url: string; caption: string | null; post_id: string | null; position: number | null }[]) || []).map((p) => ({ id: p.id, url: p.url }));
+  const photos = group((photoRows as { id: string; url: string; caption: string | null; post_id: string | null; position: number | null; poster_url: string | null }[]) || []).map((p) => ({ id: p.id, url: p.posters[0] || p.url })).filter((p) => !isVideo(p.url));
   const running = ((promos as Promotion[]) || []).find(isRunning);
   const r = ratings.get(id);
   return (

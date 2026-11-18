@@ -39,6 +39,7 @@ export type Photo = {
   post_id: string | null;
   position: number;
   view_count: number;
+  poster_url?: string | null;
   created_at: string;
 };
 

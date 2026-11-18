@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CATEGORIES, isRunning, starText, type Business, type Promotion } from "@/lib/data";
 import { ratingsFor, cityLine } from "@/lib/queries";
 import { reaches } from "@/lib/promo";
+import { isVideo } from "@/lib/posts";
 import { addressText, geocode, locate, miles, milesText, type Point } from "@/lib/geo";
 import { fit, parseSearch, splitPlace } from "@/lib/search";
 import { Logo } from "../components/Logo";
@@ -134,13 +135,14 @@ export default async function Directory({ searchParams }: { searchParams: Promis
   const [ratings, { data: photoRows }] = await Promise.all([
     ratingsFor(supabase, ids),
     ids.length
-      ? supabase.from("business_photos").select("business_id, url").in("business_id", ids).eq("hidden", false).order("created_at", { ascending: false }).limit(1000)
+      ? supabase.from("business_photos").select("business_id, url, poster_url").in("business_id", ids).eq("hidden", false).order("created_at", { ascending: false }).limit(1000)
       : Promise.resolve({ data: [] as { business_id: string; url: string }[] }),
   ]);
   const thumbs = new Map<string, string[]>();
-  for (const p of (photoRows as { business_id: string; url: string }[]) || []) {
+  for (const p of (photoRows as { business_id: string; url: string; poster_url: string | null }[]) || []) {
     const t = thumbs.get(p.business_id) || [];
-    if (t.length < 10) thumbs.set(p.business_id, [...t, p.url]);
+    const pic = isVideo(p.url) ? p.poster_url : p.url;
+    if (pic && t.length < 10) thumbs.set(p.business_id, [...t, pic]);
   }
   // Closest first when we know where someone is searching from.
   const byDistance = (a: Business, b: Business) => {
