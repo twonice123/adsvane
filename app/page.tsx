@@ -68,11 +68,11 @@ export default async function Landing() {
                 <Link key={p} href={`/find?q=${encodeURIComponent(p + " near me")}`}>{p}</Link>
               ))}
             </div>
-            <div className="lp-own">
-              <span>Own a business?</span>
-              <Link href={me ? "/dashboard" : "/signup"} className="lp-own-go">Create your free profile</Link>
-              {!me && <Link href="/login" className="lp-own-in">Log in</Link>}
+            <div className="lp-cta">
+              <Link href="/find" className="lp-cta-find">Find services</Link>
+              <Link href={me ? "/dashboard" : "/signup"} className="lp-cta-biz">{me ? "Go to your business" : "Create your business profile"}</Link>
             </div>
+            {!me && <p className="lp-own-in">Have a business account? <Link href="/login">Log in</Link></p>}
           </div>
         </div>
       </section>
