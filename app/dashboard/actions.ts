@@ -42,7 +42,7 @@ export async function saveBusiness(_prev: FormState, fd: FormData): Promise<Form
   const id = str(fd, "id", 40);
   const name = str(fd, "name", 120);
   const category = str(fd, "category");
-  const city = str(fd, "city", 80);
+  const city = str(fd, "city", 80).replace(/[\s,]+$/, "");
   const state = str(fd, "state", 2).toUpperCase();
   if (!name) return { error: "Enter your business name." };
   if (!CATEGORIES.includes(category)) return { error: "Pick a category." };
