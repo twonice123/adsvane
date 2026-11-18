@@ -68,7 +68,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
             </small>
           </div>
           <Link className="pbar-btn" href={`/dashboard/${id}/promote`}>Promote page</Link>
-          <PhotoUpload businessId={id} kind="gallery" label="+" ariaLabel="New post" multiple className="pbar-plus" wrapClass="pbar-up" />
+          <PhotoUpload businessId={id} kind="gallery" label="+" ariaLabel="New post" multiple className="pbar-plus" wrapClass="pbar-up" postTrigger />
         </div>
         <ProfileTabs tabs={profileTabs(true)} />
       </div>

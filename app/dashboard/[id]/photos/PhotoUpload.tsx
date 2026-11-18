@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { addVideo, uploadPhoto, type PhotoState } from "../../photo-actions";
 import { browserClient } from "@/lib/supabase/client";
 import { useBackClose } from "@/lib/useBackClose";
@@ -73,6 +73,9 @@ export default function PhotoUpload({
   className = "b",
   wrapClass = "",
   ariaLabel,
+  postTrigger = false,
+  openRef,
+  onPosted,
 }: {
   businessId: string;
   kind: "logo" | "cover" | "gallery";
@@ -81,6 +84,11 @@ export default function PhotoUpload({
   className?: string;
   wrapClass?: string;
   ariaLabel?: string;
+  /** The phone's bottom + button opens this picker (and ?post=1 opens it on arrival). */
+  postTrigger?: boolean;
+  /** Lets another button (the phone's bottom +) open this picker. */
+  openRef?: React.MutableRefObject<(() => void) | null>;
+  onPosted?: () => void;
 }) {
   const router = useRouter();
   const [state, setState] = useState<PhotoState>({});
@@ -118,6 +126,31 @@ export default function PhotoUpload({
   }
 
   useBackClose(!!pending2, () => cancelPost());
+
+  useEffect(() => {
+    if (!openRef) return;
+    openRef.current = () => input.current?.click();
+    return () => {
+      openRef.current = null;
+    };
+  }, [openRef]);
+
+  useEffect(() => {
+    if (!postTrigger) return;
+    const open = () => input.current?.click();
+    window.addEventListener("av:newpost", open);
+    document.body.dataset.canPost = "1";
+    const u = new URL(location.href);
+    if (u.searchParams.get("post") === "1") {
+      u.searchParams.delete("post");
+      history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+      open();
+    }
+    return () => {
+      window.removeEventListener("av:newpost", open);
+      delete document.body.dataset.canPost;
+    };
+  }, [postTrigger]);
 
   function cancelPost() {
     pending2?.urls.forEach((u) => URL.revokeObjectURL(u));
@@ -198,7 +231,8 @@ export default function PhotoUpload({
     if (!r.error) await flush();
     setState(r.error ? r : kind === "gallery" ? { ok: picked.length > 1 ? `Posted ${picked.length} as one post.` : "Posted." } : r);
     setBusy(false);
-    router.refresh();
+    if (!r.error && onPosted) onPosted();
+    else router.refresh();
   }
 
   const working = busy;

@@ -1,10 +1,24 @@
 import Link from "next/link";
 import { SLIDES } from "@/lib/slides";
 import Slideshow from "./components/Slideshow";
+import Welcome from "./components/Welcome";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getMe } from "@/lib/auth";
 
-export default function Landing() {
+export const dynamic = "force-dynamic";
+
+export default async function Landing() {
+  // Business owners land on their own business, like opening Instagram.
+  const supabase = await createClient();
+  const me = await getMe(supabase);
+  if (me) {
+    const { count } = await supabase.from("businesses").select("id", { count: "exact", head: true }).eq("owner_id", me.id);
+    if (count) redirect("/dashboard");
+  }
   return (
     <>
+      {!me && <Welcome />}
       <Slideshow slides={SLIDES} />
       <section className="wrap choose">
         <h1>What would you like to do?</h1>
@@ -17,7 +31,7 @@ export default function Landing() {
             <span className="bigtext">Hair braiding, barbers, restaurants, movers and more near you, with real reviews.</span>
             <span className="b bigbtn">Find services →</span>
           </Link>
-          <Link href="/dashboard" className="bigcard alt">
+          <Link href={me ? "/dashboard" : "/signup"} className="bigcard alt">
             <span className="bigicon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5 5 4h14l2 5.5" /><path d="M3 9.5h18v1a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z" /><path d="M5 13v7h14v-7" /><path d="M12 15v4M10 17h4" /></svg>
             </span>

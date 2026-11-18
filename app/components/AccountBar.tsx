@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import PhotoUpload from "@/app/dashboard/[id]/photos/PhotoUpload";
 import { useBackClose } from "@/lib/useBackClose";
 
 const I = {
@@ -19,7 +20,9 @@ const I = {
 // Top of every page: links, the bell, and the ☰ menu (My page, Archive, Sign out…).
 export default function AccountBar() {
   const path = usePathname();
-  const [s, setS] = useState<{ signedIn: boolean; unread: number } | null>(null);
+  const router = useRouter();
+  const [s, setS] = useState<{ signedIn: boolean; unread: number; business?: boolean; bizId?: string | null } | null>(null);
+  const openPost = useRef<(() => void) | null>(null);
   const [open, setOpen] = useState(false);
   const leaving = useBackClose(open, () => setOpen(false));
 
@@ -59,19 +62,43 @@ export default function AccountBar() {
         </Link>
       </nav>
       <nav className="bnav" aria-label="Main">
-        {[
-          { href: "/", label: "Home", icon: I.home, on: path === "/" },
-          { href: "/find", label: "Search", icon: I.search, on: path?.startsWith("/find") },
-          { href: "/dashboard", label: "My business", icon: I.store, on: path?.startsWith("/dashboard") },
-          { href: "/notifications", label: "Notifications", icon: I.bell, on: path?.startsWith("/notifications"), n: unread },
-          { href: "/me", label: "My page", icon: I.me, on: path?.startsWith("/me") },
-        ].map((t) => (
-          <Link key={t.href} href={t.href} aria-label={t.label} aria-current={t.on ? "page" : undefined} className={t.on ? "on" : undefined}>
-            {t.icon}
-            {!!t.n && <span className="bnav-n">{t.n > 99 ? "99+" : t.n}</span>}
-          </Link>
-        ))}
+        <Link href="/" aria-label="Home" className={path === "/" ? "on" : undefined}>{I.home}</Link>
+        <Link href="/find" aria-label="Search" className={path?.startsWith("/find") ? "on" : undefined}>{I.search}</Link>
+        <button
+          type="button"
+          className="bnav-plus"
+          aria-label="New post"
+          onClick={() => {
+            if (document.body.dataset.canPost) window.dispatchEvent(new Event("av:newpost"));
+            else if (openPost.current) openPost.current();
+            else router.push("/dashboard?post=1");
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        </button>
+        <Link href="/notifications" aria-label={unread ? `Notifications, ${unread} new` : "Notifications"} className={path?.startsWith("/notifications") ? "on" : undefined}>
+          {I.bell}
+          {unread > 0 && <span className="bnav-n">{unread > 99 ? "99+" : unread}</span>}
+        </Link>
+        {s?.business ? (
+          <Link href="/dashboard" aria-label="My business" className={path?.startsWith("/dashboard") ? "on" : undefined}>{I.store}</Link>
+        ) : (
+          <Link href="/me" aria-label="My page" className={path?.startsWith("/me") ? "on" : undefined}>{I.me}</Link>
+        )}
       </nav>
+      {s?.bizId && (
+        <PhotoUpload
+          businessId={s.bizId}
+          kind="gallery"
+          label="+"
+          ariaLabel="Posting"
+          multiple
+          className="bnav-busy"
+          wrapClass="bnav-up"
+          openRef={openPost}
+          onPosted={() => router.push(`/dashboard/${s.bizId}`)}
+        />
+      )}
       {open && (
         <div className="drawer-back" onClick={(e) => e.target === e.currentTarget && setOpen(false)}>
           <div
