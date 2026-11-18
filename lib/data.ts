@@ -120,8 +120,6 @@ export const SOCIAL: { key: string; label: string; base: string; hosts: string[]
   { key: "instagram", label: "Instagram", base: "https://instagram.com/", hosts: ["instagram.com", "instagr.am"], example: "https://instagram.com/yourpage" },
   { key: "facebook", label: "Facebook", base: "https://facebook.com/", hosts: ["facebook.com", "fb.com", "fb.me", "m.facebook.com"], example: "https://facebook.com/yourpage" },
   { key: "tiktok", label: "TikTok", base: "https://tiktok.com/@", hosts: ["tiktok.com", "vm.tiktok.com"], example: "https://tiktok.com/@yourpage" },
-  { key: "youtube", label: "YouTube", base: "https://youtube.com/@", hosts: ["youtube.com", "youtu.be", "m.youtube.com"], example: "https://youtube.com/@yourchannel" },
-  { key: "x", label: "X (Twitter)", base: "https://x.com/", hosts: ["x.com", "twitter.com"], example: "https://x.com/yourpage" },
 ];
 
 // Turns what an owner typed (a full link, a link without https, or just a

@@ -262,3 +262,74 @@ export async function saveProfile(_prev: ProfileState, fd: FormData): Promise<Pr
   revalidatePath("/find");
   return { ok: Date.now() };
 }
+
+// ---- New business sign up, step by step (like Google Business Profile) ----
+
+export type StartResult = { id?: string; error?: string };
+
+// Step 1: name, type and address. Creates the listing; the rest is filled in on the next steps.
+export async function startBusiness(input: { name: string; category: string; street: string; city: string; state: string; zip: string; show_address: boolean }): Promise<StartResult> {
+  const supabase = await createClient();
+  const user = await getMe(supabase);
+  if (!user) return { error: "Please log in first." };
+  const name = String(input.name ?? "").trim().slice(0, 120);
+  const category = String(input.category ?? "");
+  const city = String(input.city ?? "").trim().slice(0, 80).replace(/[\s,]+$/, "");
+  const state = String(input.state ?? "").trim().toUpperCase().slice(0, 2);
+  if (!name) return { error: "Enter your business name." };
+  if (!CATEGORIES.includes(category)) return { error: "Pick what kind of business it is." };
+  if (!city) return { error: "Enter your city." };
+  if (!STATES[state]) return { error: "Pick your state." };
+  const row = {
+    name,
+    category,
+    street: String(input.street ?? "").trim().slice(0, 120).replace(/[\s,]+$/, "") || null,
+    city,
+    state,
+    zip: String(input.zip ?? "").trim().slice(0, 10) || null,
+    show_address: !!input.show_address,
+    hours: {},
+    amenities: [] as string[],
+    social: {},
+    services: [] as { name: string }[],
+  };
+  Object.assign(row, await place(row));
+  const base = slugify(`${name} ${city} ${state}`) || "business";
+  let slug = base;
+  for (let i = 0; i < 5; i++) {
+    const { data, error } = await supabase.from("businesses").insert({ ...row, slug, owner_id: user.id }).select("id").single();
+    if (!error && data) return { id: data.id as string };
+    if (error?.code !== "23505") return { error: "Couldn't create your business. Please try again." };
+    slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+  }
+  return { error: "Couldn't create your business. Please try again." };
+}
+
+// Step 2: complete your profile. Only touches the fields on that screen.
+export async function saveProfileSetup(_prev: FormState, fd: FormData): Promise<FormState> {
+  const { supabase, user } = await requireUser();
+  const id = str(fd, "id", 40);
+  const websiteRaw = str(fd, "website", 300);
+  const website = url(websiteRaw);
+  if (websiteRaw && !website) return { error: "That website address doesn't look right." };
+  const phone = str(fd, "phone", 30) || null;
+  if (phone && phone.replace(/\D/g, "").length < 7) return { error: "That phone number doesn't look right." };
+  const social: Record<string, string> = {};
+  for (const s of SOCIAL) {
+    const raw = str(fd, `social_${s.key}`, 300);
+    if (!raw) continue;
+    const link = socialLink(s.key, raw);
+    if (!link) return { error: `That ${s.label} doesn't look right. Type your ${s.label} name, like @yourpage.` };
+    social[s.key] = link;
+  }
+  const { data, error } = await supabase
+    .from("businesses")
+    .update({ phone, website, description: str(fd, "description", 2000) || null, social })
+    .eq("id", id)
+    .eq("owner_id", user.id)
+    .select("slug")
+    .maybeSingle();
+  if (error || !data) return { error: "Couldn't save. Please try again." };
+  revalidatePath(`/b/${data.slug}`);
+  redirect(`/dashboard/${id}/setup?step=photos`);
+}

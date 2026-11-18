@@ -790,3 +790,20 @@ body:has(.lp) main{padding-bottom:0!important}
   .lp-forbiz-pic{max-width:360px;width:100%;margin:0 auto}
 }
 @media (max-width:420px){.lp-search2{padding-left:14px}.lp-search2 button{padding:13px 16px}}
+
+/* ---- new business sign up steps ---- */
+.st h1{margin:4px 0 6px;font-size:26px}
+.st .sub{margin:0 0 20px}
+.st-bar{display:flex;gap:6px;margin-bottom:14px}
+.st-bar span{flex:1;height:5px;border-radius:5px;background:var(--line)}
+.st-bar span.on{background:var(--brand)}
+.st-step{margin:0;color:var(--brand);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+.st-btns{display:flex;gap:10px;margin-top:20px}
+.st-btns>*{flex:1;text-align:center;justify-content:center}
+.st-h2{font-size:18px;margin:26px 0 10px;padding-top:20px;border-top:1px solid var(--line)}
+.st-pic{display:flex;align-items:center;gap:16px;padding:16px;margin-bottom:18px;border:1px solid var(--line);border-radius:16px;background:var(--soft)}
+.st-pic b{display:block;font-size:16px}
+.st-pic p{margin:2px 0 10px;font-size:14px}
+.st-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-bottom:14px;border-radius:12px;overflow:hidden}
+.st-grid img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.st-add{width:100%}

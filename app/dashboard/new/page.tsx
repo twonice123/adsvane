@@ -1,13 +1,13 @@
-import BusinessForm from "../BusinessForm";
+import StartForm from "@/app/signup/StartForm";
 
-export const metadata = { title: "Add your business", robots: { index: false } };
+export const metadata = { title: "Create your business profile", robots: { index: false } };
 
 export default function NewBusiness() {
   return (
-    <div className="wrap narrow" style={{ margin: "0 auto 40px" }}>
-      <h1>Add your business</h1>
-      <p className="sub">Listing on AdsVane is free. You only pay if you choose to promote your profile.</p>
-      <BusinessForm />
+    <div className="wrap narrow" style={{ margin: "26px auto 50px" }}>
+      <div className="card su-card">
+        <StartForm needAccount={false} />
+      </div>
     </div>
   );
 }

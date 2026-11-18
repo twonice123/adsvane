@@ -73,7 +73,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
         <ProfileTabs tabs={profileTabs(true)} />
       </div>
       {sp.new && <ScrollTop />}
-      {sp.new && <p className="ok">Your free listing is live! Tap Edit profile to add your profile picture, cover photo and bio.</p>}
+      {sp.new && <p className="ok">Your page is ready! Tap + to post your first photo or video.</p>}
       {sp.promo === "started" && <p className="ok">Your promotion is running. Your profile now shows as Sponsored.</p>}
       {sp.promo === "stopped" && <p className="note">Promotion stopped. Your free listing still shows in search.</p>}
 
