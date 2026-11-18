@@ -25,7 +25,8 @@ export async function middleware(request: NextRequest) {
   const user = data?.claims?.sub ? { id: String(data.claims.sub) } : null;
 
   const path = request.nextUrl.pathname;
-  if (!user && (path.startsWith("/dashboard") || path === "/me" || path === "/notifications" || path === "/archive")) {
+  const guarded = path.startsWith("/dashboard") || path === "/me" || path === "/notifications" || path === "/archive" || path === "/settings";
+  if (!user && guarded) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
@@ -33,13 +34,26 @@ export async function middleware(request: NextRequest) {
     url.searchParams.set("next", path + request.nextUrl.search);
     return NextResponse.redirect(url);
   }
+  // Two-step login is on: ask for the 6-digit code before anything private.
+  if (user && guarded) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel().catch(() => ({ data: null }));
+    if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/mfa";
+      url.search = "";
+      url.searchParams.set("next", path + request.nextUrl.search);
+      const r = NextResponse.redirect(url);
+      response.cookies.getAll().forEach((c) => r.cookies.set(c));
+      return r;
+    }
+  }
   // "Add your business" for an owner with one business: go straight to it, skipping a page.
   if (user && path === "/dashboard") {
     const { data: rows } = await supabase.from("businesses").select("id").eq("owner_id", user.id).limit(2);
     if (rows?.length === 1) {
       const url = request.nextUrl.clone();
       url.pathname = `/dashboard/${rows[0].id}`;
-      url.search = "";
+      url.search = request.nextUrl.searchParams.get("post") === "1" ? "?post=1" : "";
       const r = NextResponse.redirect(url);
       response.cookies.getAll().forEach((c) => r.cookies.set(c));
       return r;
@@ -49,5 +63,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/me", "/notifications", "/archive", "/login", "/auth/:path*"],
+  matcher: ["/dashboard/:path*", "/me", "/notifications", "/archive", "/settings", "/login", "/auth/:path*"],
 };
