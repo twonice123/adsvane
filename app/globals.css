@@ -598,3 +598,18 @@ button.galitem:hover::after{background:rgba(0,0,0,.12)}
 @media (max-width:600px){
   #ptb #photos.card,#ptb #reposts.card,#ptb #saved.card{margin-left:-16px;margin-right:-16px;border:0;padding-top:0;background:transparent;box-shadow:none}
 }
+
+.dwrap{margin-bottom:40px}
+/* ---- phone: Instagram-style bottom bar instead of the footer ---- */
+.bnav{display:none}
+@media (max-width:700px){
+  .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;justify-content:space-around;align-items:center;height:56px;padding-bottom:env(safe-area-inset-bottom);box-sizing:content-box;background:#fff;border-top:1px solid var(--line)}
+  .bnav a{position:relative;flex:1;height:100%;display:grid;place-items:center;color:var(--ink);text-decoration:none}
+  .bnav a svg{width:26px;height:26px}
+  .bnav a.on svg{stroke-width:2.8}
+  .bnav-n{position:absolute;top:8px;left:calc(50% + 6px);min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#e11d48;color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center}
+  body:not(:has(.mbar)) footer{display:none}
+  body:not(:has(.mbar)) main{padding-bottom:calc(57px + env(safe-area-inset-bottom))}
+  body:has(.mbar) .bnav{display:none}
+  .dwrap,#ptb{margin-bottom:0}
+}

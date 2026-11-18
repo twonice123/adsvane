@@ -47,7 +47,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
   const daysLeft = running ? Math.max(1, Math.ceil((new Date(running.ends_at).getTime() - Date.now()) / 86400000)) : 0;
 
   return (
-    <div className="wrap" style={{ marginBottom: 40 }}>
+    <div className="wrap dwrap">
       <div className="dhead">
         <ProfileTop
           biz={biz}

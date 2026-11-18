@@ -11,6 +11,8 @@ const I = {
   store: <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M4 9 5.5 4h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6" /></svg>,
   archive: <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true"><path d="M3 4h18v4H3zM5 8v12h14V8M10 12h4" /></svg>,
   saved: <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>,
+  home: <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z" /></svg>,
+  search: <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>,
   out: <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" /></svg>,
 };
 
@@ -55,6 +57,20 @@ export default function AccountBar() {
           {I.bell}
           {unread > 0 && <span className="bell-n">{unread > 99 ? "99+" : unread}</span>}
         </Link>
+      </nav>
+      <nav className="bnav" aria-label="Main">
+        {[
+          { href: "/", label: "Home", icon: I.home, on: path === "/" },
+          { href: "/find", label: "Search", icon: I.search, on: path?.startsWith("/find") },
+          { href: "/dashboard", label: "My business", icon: I.store, on: path?.startsWith("/dashboard") },
+          { href: "/notifications", label: "Notifications", icon: I.bell, on: path?.startsWith("/notifications"), n: unread },
+          { href: "/me", label: "My page", icon: I.me, on: path?.startsWith("/me") },
+        ].map((t) => (
+          <Link key={t.href} href={t.href} aria-label={t.label} aria-current={t.on ? "page" : undefined} className={t.on ? "on" : undefined}>
+            {t.icon}
+            {!!t.n && <span className="bnav-n">{t.n > 99 ? "99+" : t.n}</span>}
+          </Link>
+        ))}
       </nav>
       {open && (
         <div className="drawer-back" onClick={(e) => e.target === e.currentTarget && setOpen(false)}>
