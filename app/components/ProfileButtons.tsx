@@ -9,6 +9,7 @@ import { Cover } from "./Cover";
 import PhotoUpload from "@/app/dashboard/[id]/photos/PhotoUpload";
 import FrameEditor from "@/app/dashboard/[id]/FrameEditor";
 import { removePhoto } from "@/app/dashboard/photo-actions";
+import { useBackClose } from "@/lib/useBackClose";
 
 export type ProfileInfo = {
   id: string;
@@ -196,6 +197,7 @@ export default function ProfileButtons({
   const [open, setOpen] = useState<"" | "edit" | "share" | "contact">("");
   const [copied, setCopied] = useState(false);
   const close = () => setOpen("");
+  useBackClose(!!open, close);
   const tel = info.phone ? info.phone.replace(/[^\d+]/g, "") : "";
   const canShare = typeof navigator !== "undefined" && "share" in navigator;
 

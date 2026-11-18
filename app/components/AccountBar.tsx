@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useBackClose } from "@/lib/useBackClose";
 
 const I = {
   bell: <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z" /><path d="M10 20a2 2 0 0 0 4 0" /></svg>,
@@ -18,6 +19,7 @@ export default function AccountBar() {
   const path = usePathname();
   const [s, setS] = useState<{ signedIn: boolean; unread: number } | null>(null);
   const [open, setOpen] = useState(false);
+  const leaving = useBackClose(open, () => setOpen(false));
 
   useEffect(() => {
     setOpen(false);
@@ -56,7 +58,13 @@ export default function AccountBar() {
       </nav>
       {open && (
         <div className="drawer-back" onClick={(e) => e.target === e.currentTarget && setOpen(false)}>
-          <div className="drawer" role="dialog" aria-modal="true" aria-label="Menu">
+          <div
+            className="drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            onClickCapture={(e) => (e.target as Element).closest("a, button[type=submit]") && leaving()}
+          >
             <div className="drawer-top">
               <b>Menu</b>
               <button type="button" className="sh-x" onClick={() => setOpen(false)} aria-label="Close menu">✕</button>

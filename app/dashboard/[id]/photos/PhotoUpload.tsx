@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { addVideo, uploadPhoto, type PhotoState } from "../../photo-actions";
 import { browserClient } from "@/lib/supabase/client";
+import { useBackClose } from "@/lib/useBackClose";
 import { PHOTO_BUCKET } from "@/lib/data";
 
 const MAX_SECONDS = 15;
@@ -115,6 +116,8 @@ export default function PhotoUpload({
     }
     send(picked, "");
   }
+
+  useBackClose(!!pending2, () => cancelPost());
 
   function cancelPost() {
     pending2?.urls.forEach((u) => URL.revokeObjectURL(u));

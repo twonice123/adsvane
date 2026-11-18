@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { ago } from "@/lib/time";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isVideo } from "@/lib/posts";
+import { useBackClose } from "@/lib/useBackClose";
 import { addComment, deletePhoto, editPhoto, loadComments, loadViewers, noteShare, removeComment, toggle, type Comment, type Viewer } from "@/app/post-actions";
 
 export type Post = {
@@ -112,6 +113,8 @@ export default function Gallery({
     setMenu("");
     setNote("");
   }, []);
+  // Phone Back closes the photo instead of leaving the page.
+  const leaving = useBackClose(open !== null, close);
 
   // Open a shared photo link (?photo=id) straight away.
   useEffect(() => {
@@ -303,7 +306,7 @@ export default function Gallery({
           {n > 1 && <button type="button" className="lb-nav prev" onClick={() => go(-1)} aria-label="Previous photo">‹</button>}
           <article className="pv">
             <header className="pv-top">
-              <Link href={`/b/${cur.biz.slug}`} className="pv-who" onClick={close}>
+              <Link href={`/b/${cur.biz.slug}`} className="pv-who" onClick={() => { leaving(); close(); }}>
                 <Avatar name={cur.biz.name} url={cur.biz.logo_url} />
                 <b>{cur.biz.name}</b>
               </Link>
