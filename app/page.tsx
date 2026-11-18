@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { billboard } from "@/lib/billboard";
 import { createClient } from "@/lib/supabase/server";
 import { getMe } from "@/lib/auth";
@@ -42,10 +41,6 @@ const Svg = ({ children }: { children: React.ReactNode }) => (
 export default async function Landing() {
   const supabase = await createClient();
   const me = await getMe(supabase);
-  if (me) {
-    const { count } = await supabase.from("businesses").select("id", { count: "exact", head: true }).eq("owner_id", me.id);
-    if (count) redirect("/dashboard");
-  }
   // Real photos from AdsVane businesses fill the phones (placeholders until the final pictures are in).
   const shots = (await billboard(supabase, 12).catch(() => [])).filter((a) => !a.video).slice(0, 6);
   const pics = shots.map((a) => a.url);
