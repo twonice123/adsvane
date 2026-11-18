@@ -2,8 +2,7 @@ import Link from "next/link";
 import { billboard } from "@/lib/billboard";
 import { createClient } from "@/lib/supabase/server";
 import { getMe } from "@/lib/auth";
-import PhoneShow from "./components/PhoneShow";
-import SlotRail from "./components/SlotRail";
+import SplitShow from "./components/SplitShow";
 import Welcome from "./components/Welcome";
 
 export const dynamic = "force-dynamic";
@@ -41,29 +40,18 @@ const Svg = ({ children }: { children: React.ReactNode }) => (
 export default async function Landing() {
   const supabase = await createClient();
   const me = await getMe(supabase);
-  // Real photos from AdsVane businesses fill the phones (placeholders until the final pictures are in).
+  // Real photos from AdsVane businesses fill the split picture (placeholders until the final pictures are in).
   const shots = (await billboard(supabase, 12).catch(() => [])).filter((a) => !a.video).slice(0, 6);
   const pics = shots.map((a) => a.url);
-  const names = shots.map((a) => a.biz.name);
 
   return (
     <div className="lp">
       {!me && <Welcome />}
 
-      {/* 1. Hero: phones on one side, the search on the other */}
+      {/* 1. Hero: split picture on one side, the search on the other */}
       <section className="lp-hero">
         <div className="lp-hero-in">
-          <div className="lp-phones" aria-hidden="true">
-            <div className="phone back">
-              <div className="ph-screen">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {pics[1] ? <img src={pics[1]} alt="" className="on" /> : <div className="ph-empty" />}
-              </div>
-            </div>
-            <div className="phone front">
-              <PhoneShow pics={pics} names={names} />
-            </div>
-          </div>
+          <SplitShow pics={pics} />
 
           <div className="lp-copy">
             <p className="lp-word">Ads<span>Vane</span></p>
@@ -101,19 +89,7 @@ export default async function Landing() {
               <b>Featured video goes here</b>
               <small>7 to 15 second promo video</small>
             </div>
-            <SlotRail
-              vertical
-              items={[
-                { kind: "flyer", label: "Flyer goes here", sub: "Promo flyer" },
-                { kind: "video", label: "Short clip goes here", sub: "7 to 10 seconds" },
-                { kind: "flyer", label: "Flyer goes here", sub: "Special offer" },
-                { kind: "video", label: "Short clip goes here", sub: "7 to 10 seconds" },
-              ]}
-            />
           </div>
-          <SlotRail
-            items={Array.from({ length: 8 }, (_, k) => (k % 2 ? { kind: "flyer" as const, label: "Flyer", sub: "Goes here" } : { kind: "video" as const, label: "Clip", sub: "Goes here" }))}
-          />
         </div>
       </section>
 
@@ -157,12 +133,9 @@ export default async function Landing() {
               {!me && <Link href="/login" className="b ghost">Log in</Link>}
             </div>
           </div>
-          <div className="phone solo" aria-hidden="true">
-            <div className="ph-screen">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {pics[2] ? <img src={pics[2]} alt="" className="on" /> : <div className="ph-empty" />}
-              <div className="ph-ui"><div className="ph-top"><span className="ph-dot" /><b>Your business</b></div><div className="ph-bottom"><span className="ph-btn">Promote page</span></div></div>
-            </div>
+          <div className="lp-forbiz-pic" aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {pics[2] ? <img src={pics[2]} alt="" /> : <div className="split-empty" />}
           </div>
         </div>
       </section>
