@@ -19,6 +19,7 @@ export default async function Join({ searchParams }: { searchParams: Promise<{ n
     <div className="wrap narrow" style={{ margin: "26px auto 50px" }}>
       <div className="card su-card">
         <JoinForm next={next} startAt={me ? 3 : 1} />
+        <p className="muted su-terms">By creating an account you agree to our <Link href="/terms">Terms</Link> and <Link href="/privacy">Privacy Policy</Link>.</p>
         {!me && (
           <p className="su-alt">
             Already have an account? <Link href={`/login?who=member&next=${encodeURIComponent(next)}`}>Log in</Link>

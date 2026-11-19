@@ -15,6 +15,7 @@ export default async function Signup() {
     <div className="wrap narrow" style={{ margin: "26px auto 50px" }}>
       <div className="card su-card">
         <StartForm needAccount />
+        <p className="muted su-terms">By creating an account you agree to our <Link href="/terms">Terms</Link> and <Link href="/privacy">Privacy Policy</Link>.</p>
         <p className="su-alt">
           Already have an account? <Link href="/login">Log in</Link>
         </p>

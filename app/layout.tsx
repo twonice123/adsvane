@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main>{children}</main>
         <footer>
           <div className="wrap">
-            AdsVane · Free listings for local businesses. Paid placements are always labeled Sponsored.
+            AdsVane · Free listings for local businesses. Paid placements are always labeled Sponsored. · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a>
           </div>
         </footer>
       </body>

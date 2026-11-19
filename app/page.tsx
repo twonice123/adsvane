@@ -148,6 +148,8 @@ export default async function Landing() {
             <Link href="/signup">Create business profile</Link>
             <Link href="/login">Log in</Link>
             <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/data-deletion">Delete your data</Link>
           </nav>
           <small>© {new Date().getFullYear()} AdsVane · Free listings for local businesses. Paid placements are always labeled Sponsored.</small>
         </div>
