@@ -66,6 +66,7 @@ export default function LoginForm({ next, email: start = "", linkOnly = false }:
             <input id="pw" type={show ? "text" : "password"} autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} />
             <button type="button" className="pw-eye" onClick={() => setShow(!show)} aria-label={show ? "Hide password" : "Show password"}>{show ? "Hide" : "Show"}</button>
           </div>
+          <a className="fg-link" href={`/forgot${email ? `?email=${encodeURIComponent(email.trim())}` : ""}`}>Forgot password?</a>
         </div>
       )}
       {err && <p className="err" role="alert">{err}</p>}

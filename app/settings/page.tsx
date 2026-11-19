@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMe } from "@/lib/auth";
 import Security from "./Security";
+import Personal from "./Personal";
 
 export const metadata = { title: "Settings", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -12,14 +13,15 @@ const NETS = [
   { name: "TikTok", note: "Share your videos to TikTok" },
 ];
 
-export default async function Settings() {
+export default async function Settings({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
+  const sp = await searchParams;
   const supabase = await createClient();
   const me = await getMe(supabase);
   if (!me) redirect("/login?next=%2Fsettings");
   return (
     <div className="wrap narrow dwrap" style={{ marginTop: 22 }}>
       <h1>Settings</h1>
-      {me.email && <p className="sub">Signed in as {me.email}.</p>}
+      <Personal email={me.email || ""} changed={sp.email === "changed"} />
       <Security />
       <section className="card set-card">
         <h2>Connected accounts</h2>

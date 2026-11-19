@@ -821,3 +821,4 @@ body:has(.lp) main{padding-bottom:0!important}
 .me-places a:hover{border-color:#c9c0e8}
 .me-places span{display:flex;flex-direction:column;min-width:0}
 .me-places small{color:var(--ink-3)}
+.fg-link{display:inline-block;margin-top:8px;font-size:14px;font-weight:600;text-decoration:none}
