@@ -1,96 +1,22 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import {
+  ANIMS, EFFECTS, FONTS, FONTS_URL, SWATCHES, colorsOf, cssFont, drawCaption, drawItem, effectCss, fontStr, hexToHsv, hsvToHex, moves, rgbToHex,
+  type Box, type Cap, type Item,
+} from "./textStyles";
 
 // Instagram-style editor that opens after picking one photo or video:
-// Text, Stickers, Music (Audio), Voice-over and Captions. On "Next" everything is
-// drawn into a new photo or video file, so it looks the same everywhere it is shared.
+// Audio, Text, Voice-over, Captions and Stickers. On "Next" everything is drawn into
+// a new photo or video file, so it looks the same everywhere it is shared.
 
-type Item = { id: string; kind: "text" | "emoji"; text: string; x: number; y: number; size: number; color: string; box: "" | "dark" | "light" | "brand" };
-type Cap = { start: number; end: number; text: string };
 type Panel = "" | "text" | "stickers" | "audio" | "voice" | "captions";
+type Tab = "kbd" | "font" | "color" | "anim" | "effect";
 
-const COLORS = ["#ffffff", "#0d0b12", "#4c3a99", "#ffd43b", "#ff4d6d", "#2ec4b6"];
 const EMOJI = ["🔥", "✨", "💅", "💇‍♀️", "✂️", "💈", "❤️", "😍", "👑", "💯", "📍", "📅", "⭐", "🎉", "💜", "👀", "🙌", "💄", "🧴", "🌸"];
 const WORDS = ["BOOK NOW", "NEW", "SALE", "OPEN TODAY", "DM TO BOOK", "WALK-INS WELCOME", "LIMITED SPOTS"];
 const MAX_SECONDS = 15;
-const FONT = '700 {S}px Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
 
-// Rounded box, with a plain box on older phones that can't round corners.
-function pill(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
-  else ctx.rect(x, y, w, h);
-  ctx.fill();
-}
-
-function boxColor(b: Item["box"]) {
-  return b === "dark" ? "rgba(13,11,18,.78)" : b === "light" ? "rgba(255,255,255,.92)" : b === "brand" ? "#4c3a99" : "";
-}
-
-// Draw one text or sticker exactly where it sits in the preview.
-function drawItem(ctx: CanvasRenderingContext2D, it: Item, W: number, H: number) {
-  const fs = it.size * W;
-  ctx.font = FONT.replace("{S}", String(Math.round(fs)));
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  const lines = it.text.split("\n");
-  const lh = fs * 1.25;
-  const cx = it.x * W;
-  const top = it.y * H - (lines.length * lh) / 2;
-  lines.forEach((ln, i) => {
-    const cy = top + lh * i + lh / 2;
-    const bg = boxColor(it.box);
-    if (bg && ln.trim()) {
-      const w = ctx.measureText(ln).width + fs * 0.8;
-      const h = lh;
-      ctx.fillStyle = bg;
-      const r = fs * 0.3;
-      pill(ctx, cx - w / 2, cy - h / 2, w, h, r);
-    }
-    if (!bg && it.kind === "text") {
-      ctx.shadowColor = "rgba(0,0,0,.45)";
-      ctx.shadowBlur = fs * 0.15;
-    }
-    ctx.fillStyle = it.color;
-    ctx.fillText(ln, cx, cy);
-    ctx.shadowBlur = 0;
-    ctx.shadowColor = "transparent";
-  });
-}
-
-function wrap(ctx: CanvasRenderingContext2D, text: string, max: number) {
-  const out: string[] = [];
-  let line = "";
-  for (const w of text.split(/\s+/)) {
-    const t = line ? line + " " + w : w;
-    if (ctx.measureText(t).width > max && line) {
-      out.push(line);
-      line = w;
-    } else line = t;
-  }
-  if (line) out.push(line);
-  return out.slice(-2);
-}
-
-function drawCaption(ctx: CanvasRenderingContext2D, caps: Cap[], t: number, W: number, H: number) {
-  const c = caps.find((x) => t >= x.start && t < x.end);
-  if (!c) return;
-  const fs = W * 0.048;
-  ctx.font = FONT.replace("{S}", String(Math.round(fs)));
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  const lines = wrap(ctx, c.text, W * 0.84);
-  const lh = fs * 1.35;
-  const top = H * 0.84 - (lines.length * lh) / 2;
-  lines.forEach((ln, i) => {
-    const cy = top + lh * i + lh / 2;
-    const w = ctx.measureText(ln).width + fs * 0.8;
-    ctx.fillStyle = "rgba(13,11,18,.72)";
-    pill(ctx, W / 2 - w / 2, cy - lh / 2, w, lh, fs * 0.25);
-    ctx.fillStyle = "#fff";
-    ctx.fillText(ln, W / 2, cy);
-  });
-}
+const newText = (): Item => ({ id: crypto.randomUUID(), kind: "text", text: "", x: 0.5, y: 0.45, size: 0.075, color: "#ffffff", font: "classic", effect: "soft", anim: "none", bg: "", align: "center" });
 
 function pickMime() {
   const opts = ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
@@ -112,6 +38,24 @@ const ready = (el: HTMLMediaElement) =>
     setTimeout(() => res(), 8000);
   });
 
+let measurer: CanvasRenderingContext2D | null = null;
+function textWidth(it: Item, px: number) {
+  measurer ||= document.createElement("canvas").getContext("2d");
+  if (!measurer) return 0;
+  measurer.font = fontStr(it, px);
+  return Math.max(0, ...it.text.split("\n").map((l) => measurer!.measureText(l).width));
+}
+
+const AlignIcon = ({ a }: { a: Item["align"] }) => (
+  <svg width="26" height="22" viewBox="0 0 26 22" aria-hidden="true">
+    {[3, 9, 15].map((y, i) => {
+      const w = i === 1 ? 14 : 22;
+      const x = a === "left" ? 2 : a === "right" ? 24 - w : 13 - w / 2;
+      return <rect key={y} x={x} y={y} width={w} height="2.6" rx="1.3" fill="currentColor" />;
+    })}
+  </svg>
+);
+
 export default function MediaEditor({ file, onCancel, onDone }: { file: File; onCancel: () => void; onDone: (f: File, edited: boolean) => void }) {
   const isVideo = file.type.startsWith("video/");
   const [url] = useState(() => URL.createObjectURL(file));
@@ -119,6 +63,9 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
   const [sel, setSel] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>("");
   const [draft, setDraft] = useState<Item | null>(null);
+  const [tab, setTab] = useState<Tab>("kbd");
+  const [hsv, setHsv] = useState({ h: 0, s: 0, v: 1 });
+  const [picking, setPicking] = useState(false);
   const [music, setMusic] = useState<{ url: string; name: string } | null>(null);
   const [musicVol, setMusicVol] = useState(0.8);
   const [voice, setVoice] = useState<{ url: string; seconds: number } | null>(null);
@@ -127,28 +74,116 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
   const [caps, setCaps] = useState<Cap[]>([]);
   const [capText, setCapText] = useState("");
   const [rec, setRec] = useState<"" | "voice" | "caps">("");
-  const [now, setNow] = useState(0);
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const [dur, setDur] = useState(0);
-  // Width ÷ height of the photo or video, so the editing area keeps its exact shape.
   const [ar, setAr] = useState(9 / 16);
+  const [stageW, setStageW] = useState(300);
+  const root = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const typer = useRef<HTMLTextAreaElement>(null);
   const vid = useRef<HTMLVideoElement>(null);
   const img = useRef<HTMLImageElement>(null);
   const musicEl = useRef<HTMLAudioElement>(null);
   const voiceEl = useRef<HTMLAudioElement>(null);
-  const drag = useRef<{ id: string; dx: number; dy: number; moved: boolean } | null>(null);
+  const drag = useRef<{ id: string; dx: number; dy: number; moved: boolean; sx: number; sy: number } | null>(null);
+  const editFrom = useRef<{ x: number; y: number } | null>(null);
   const stopRec = useRef<(() => void) | null>(null);
   const musicInput = useRef<HTMLInputElement>(null);
   const autoText = useRef("");
+  const boxes = useRef(new Map<string, Box>());
+  const live = useRef({ items, draft, sel, caps, panel, tab });
+  live.current = { items, draft, sel, caps, panel, tab };
 
   useEffect(() => () => URL.revokeObjectURL(url), [url]);
+
+  // Fonts for the text tool.
+  useEffect(() => {
+    if (document.getElementById("ed-fonts")) return;
+    const l = document.createElement("link");
+    l.id = "ed-fonts";
+    l.rel = "stylesheet";
+    l.href = FONTS_URL;
+    document.head.appendChild(l);
+  }, []);
+  useEffect(() => {
+    for (const it of draft ? [...items, draft] : items) if (it.kind === "text") document.fonts?.load(fontStr(it, 40), it.text || "A").catch(() => {});
+  }, [items, draft]);
+
+  // Keep the editor above the phone's keyboard.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = root.current;
+    if (!vv || !el) return;
+    const fit = () => {
+      el.style.setProperty("--vvh", `${vv.height}px`);
+      el.style.setProperty("--vvt", `${vv.offsetTop}px`);
+    };
+    fit();
+    vv.addEventListener("resize", fit);
+    vv.addEventListener("scroll", fit);
+    return () => {
+      vv.removeEventListener("resize", fit);
+      vv.removeEventListener("scroll", fit);
+    };
+  }, []);
+
+  // The drawing layer matches the picture's size on screen.
+  useEffect(() => {
+    const st = stage.current;
+    const c = canvas.current;
+    if (!st || !c) return;
+    const ro = new ResizeObserver(() => {
+      const r = st.getBoundingClientRect();
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      c.width = Math.max(1, Math.round(r.width * dpr));
+      c.height = Math.max(1, Math.round(r.height * dpr));
+      setStageW(r.width);
+    });
+    ro.observe(st);
+    return () => ro.disconnect();
+  }, []);
+
+  // Draw text, stickers and captions over the picture, every frame, so animations play.
+  useEffect(() => {
+    let raf = 0;
+    const t0 = performance.now();
+    const loop = () => {
+      const c = canvas.current;
+      const ctx = c?.getContext("2d");
+      if (c && ctx) {
+        const L = live.current;
+        const W = c.width, H = c.height;
+        const t = isVideo && vid.current ? vid.current.currentTime : (performance.now() - t0) / 1000;
+        ctx.clearRect(0, 0, W, H);
+        boxes.current.clear();
+        for (const it of L.items) {
+          if (L.draft && it.id === L.draft.id) continue;
+          boxes.current.set(it.id, drawItem(ctx, it, W, H, t, it.id === L.sel && !L.panel));
+        }
+        if (L.draft && L.panel === "text") {
+          const animate = L.tab === "anim" || (L.tab !== "kbd" && L.draft.effect === "shimmer");
+          if (L.draft.text) drawItem(ctx, L.draft, W, H, animate ? t : null);
+        } else drawCaption(ctx, L.caps, isVideo ? t : 0, W, H);
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    loop();
+    return () => cancelAnimationFrame(raf);
+  }, [isVideo]);
+
+  // Keyboard shows only on the keyboard tab.
+  useEffect(() => {
+    if (panel !== "text") return;
+    if (tab === "kbd") setTimeout(() => typer.current?.focus(), 30);
+    else typer.current?.blur();
+  }, [tab, panel]);
+
   useEffect(() => {
     if (!isVideo) return;
     const v = vid.current;
-    if (!v) return;
-    v.muted = !origOn || rec === "voice";
+    if (v) v.muted = !origOn || rec === "voice";
   }, [origOn, rec, isVideo]);
 
   // Keep music and voice in step with the video as it loops.
@@ -157,7 +192,6 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
     if (!isVideo || !v) return;
     let last = 0;
     const tick = () => {
-      setNow(v.currentTime);
       if (v.currentTime + 0.05 < last) {
         for (const a of [musicEl.current, voiceEl.current]) if (a) { a.currentTime = 0; a.play().catch(() => {}); }
       }
@@ -173,62 +207,104 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
     if (voiceEl.current) voiceEl.current.volume = voiceVol;
   }, [voiceVol, voice]);
   useEffect(() => {
-    // For a photo, music and voice simply play in a loop.
-    if (isVideo) return;
-    for (const a of [musicEl.current, voiceEl.current]) if (a) { a.loop = true; a.currentTime = 0; a.play().catch(() => {}); }
-  }, [music, voice, isVideo]);
-  useEffect(() => {
-    if (!isVideo) return;
-    const v = vid.current;
-    if (!v) return;
-    v.currentTime = 0;
-    v.play().catch(() => {});
-    for (const a of [musicEl.current, voiceEl.current]) if (a) { a.currentTime = 0; a.play().catch(() => {}); }
+    if (isVideo) {
+      const v = vid.current;
+      if (!v) return;
+      v.currentTime = 0;
+      v.play().catch(() => {});
+    }
+    for (const a of [musicEl.current, voiceEl.current]) if (a) { a.loop = !isVideo; a.currentTime = 0; a.play().catch(() => {}); }
   }, [music, voice, isVideo]);
 
   const selected = items.find((i) => i.id === sel) || null;
   const upd = (id: string, p: Partial<Item>) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x)));
+  const setD = (p: Partial<Item>) => setDraft((d) => (d ? { ...d, ...p } : d));
 
-  function onDown(e: React.PointerEvent, it: Item) {
-    e.stopPropagation();
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  function openText(it: Item | null) {
+    const base = it || newText();
+    editFrom.current = { x: base.x, y: base.y };
+    setDraft({ ...base, x: 0.5, y: 0.42 });
+    setHsv(hexToHsv(base.color));
+    setSel(null);
+    setTab("kbd");
+    setPanel("text");
+  }
+  function saveDraft() {
+    const d = draft;
+    setPanel("");
+    setDraft(null);
+    setPicking(false);
+    if (!d) return;
+    const done = { ...d, ...(editFrom.current || {}) };
+    if (!done.text.trim()) setItems((xs) => xs.filter((x) => x.id !== done.id));
+    else if (items.some((x) => x.id === done.id)) upd(done.id, done);
+    else setItems((xs) => [...xs, done]);
+    setSel(null);
+  }
+
+  function point(e: React.PointerEvent) {
     const r = stage.current!.getBoundingClientRect();
-    drag.current = { id: it.id, dx: (e.clientX - r.left) / r.width - it.x, dy: (e.clientY - r.top) / r.height - it.y, moved: false };
-    setSel(it.id);
+    return { nx: (e.clientX - r.left) / r.width, ny: (e.clientY - r.top) / r.height };
+  }
+  function pickColor(nx: number, ny: number) {
+    const m = (isVideo ? vid.current : img.current) as CanvasImageSource | null;
+    if (!m) return;
+    try {
+      const c = document.createElement("canvas");
+      c.width = 200;
+      c.height = Math.round(200 / ar);
+      const x = c.getContext("2d", { willReadFrequently: true })!;
+      x.drawImage(m, 0, 0, c.width, c.height);
+      const [r, g, b] = x.getImageData(Math.floor(nx * c.width), Math.floor(ny * c.height), 1, 1).data;
+      const hex = rgbToHex(r, g, b);
+      setD({ color: hex });
+      setHsv(hexToHsv(hex));
+    } catch {}
+    setPicking(false);
+  }
+  function onDown(e: React.PointerEvent) {
+    e.stopPropagation();
+    const { nx, ny } = point(e);
+    if (picking) return pickColor(nx, ny);
+    if (panel === "text") {
+      if (e.target !== typer.current) setTab("kbd");
+      return;
+    }
+    if (panel) return;
+    const c = canvas.current!;
+    const px = nx * c.width, py = ny * c.height;
+    const hit = [...items].reverse().find((it) => {
+      const b = boxes.current.get(it.id);
+      return b && px >= b.x - 10 && px <= b.x + b.w + 10 && py >= b.y - 10 && py <= b.y + b.h + 10;
+    });
+    if (!hit) return setSel(null);
+    stage.current!.setPointerCapture?.(e.pointerId);
+    drag.current = { id: hit.id, dx: nx - hit.x, dy: ny - hit.y, moved: false, sx: e.clientX, sy: e.clientY };
+    setSel(hit.id);
   }
   function onMove(e: React.PointerEvent) {
     const d = drag.current;
     if (!d) return;
-    const r = stage.current!.getBoundingClientRect();
-    const clamp = (n: number) => Math.min(0.97, Math.max(0.03, n));
+    if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) return;
     d.moved = true;
-    upd(d.id, { x: clamp((e.clientX - r.left) / r.width - d.dx), y: clamp((e.clientY - r.top) / r.height - d.dy) });
+    const { nx, ny } = point(e);
+    const clamp = (n: number) => Math.min(0.97, Math.max(0.03, n));
+    upd(d.id, { x: clamp(nx - d.dx), y: clamp(ny - d.dy) });
   }
-  function onUp(it: Item) {
+  function onUp() {
     const d = drag.current;
     drag.current = null;
-    // A tap (no drag) on selected text opens it for editing.
-    if (d && !d.moved && it.kind === "text") {
-      setDraft(it);
-      setPanel("text");
-    }
-  }
-
-  function saveDraft() {
-    if (!draft) return setPanel("");
-    if (!draft.text.trim()) {
-      setItems((xs) => xs.filter((x) => x.id !== draft.id));
-    } else if (items.some((x) => x.id === draft.id)) upd(draft.id, draft);
-    else setItems((xs) => [...xs, draft]);
-    setSel(draft.text.trim() ? draft.id : null);
-    setDraft(null);
-    setPanel("");
+    if (!d || d.moved) return;
+    // A tap on text opens it for editing, like Instagram.
+    const it = items.find((x) => x.id === d.id);
+    if (it?.kind === "text") openText(it);
   }
 
   function addSticker(text: string, word: boolean) {
+    const base = newText();
     const it: Item = word
-      ? { id: crypto.randomUUID(), kind: "text", text, x: 0.5, y: 0.3 + Math.random() * 0.2, size: 0.06, color: "#ffffff", box: "brand" }
-      : { id: crypto.randomUUID(), kind: "emoji", text, x: 0.5, y: 0.4 + Math.random() * 0.2, size: 0.14, color: "#000000", box: "" };
+      ? { ...base, text, y: 0.3 + Math.random() * 0.2, size: 0.06, color: "#4c3a99", effect: "none", bg: "solid" }
+      : { ...base, kind: "emoji", text, y: 0.4 + Math.random() * 0.2, size: 0.14, effect: "none" };
     setItems((xs) => [...xs, it]);
     setSel(it.id);
     setPanel("");
@@ -277,7 +353,8 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
   // Automatic captions: play the video out loud and write down what is said.
   function autoCaptions() {
     setErr("");
-    const SR = (window as unknown as { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec }).SpeechRecognition || (window as unknown as { webkitSpeechRecognition?: new () => SpeechRec }).webkitSpeechRecognition;
+    const w = window as unknown as { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec };
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
     const v = vid.current;
     if (!SR || !v) return setErr("This browser can't listen for captions. Type them below instead.");
     const r = new SR();
@@ -325,7 +402,6 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
 
   // Typed captions: each line shows for an equal part of the video.
   function typedCaptions(text: string) {
-    // Captions heard automatically keep their own timing unless they were changed.
     if (text === autoText.current && caps.length) return;
     autoText.current = "";
     if (!isVideo) {
@@ -333,19 +409,20 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
       return setCaps(t ? [{ start: 0, end: 1e9, text: t }] : []);
     }
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-    const total = isVideo ? dur || MAX_SECONDS : 10;
+    const total = dur || MAX_SECONDS;
     const step = lines.length ? total / lines.length : 0;
     setCaps(lines.map((t, i) => ({ start: i * step, end: (i + 1) * step, text: t })));
   }
 
   const edited = items.length > 0 || !!music || !!voice || caps.length > 0 || (isVideo && !origOn);
+  const needsVideo = isVideo || !!music || !!voice || items.some(moves);
 
   async function finish() {
     setSel(null);
     if (!edited) return onDone(file, false);
     setErr("");
     try {
-      if (!isVideo && !music && !voice) {
+      if (!needsVideo) {
         setBusy("Saving your photo…");
         const im = img.current!;
         const s = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
@@ -356,7 +433,7 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
         c.height = H;
         const ctx = c.getContext("2d")!;
         ctx.drawImage(im, 0, 0, W, H);
-        items.forEach((it) => drawItem(ctx, it, W, H));
+        items.forEach((it) => drawItem(ctx, it, W, H, null));
         drawCaption(ctx, caps, 0, W, H);
         const blob: Blob | null = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9));
         if (!blob) throw new Error("x");
@@ -416,21 +493,19 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
       const s = Math.min(1, 1280 / Math.max(im.naturalWidth, im.naturalHeight));
       W = Math.round((im.naturalWidth * s) / 2) * 2;
       H = Math.round((im.naturalHeight * s) / 2) * 2;
-      seconds = Math.min(MAX_SECONDS, voice ? Math.max(3, voice.seconds) : 10);
+      seconds = Math.min(MAX_SECONDS, voice ? Math.max(3, voice.seconds) : music ? 10 : 7);
     }
-    if (music) {
-      const a = music0!;
-      holder.appendChild(a);
-      await ready(a).catch(() => {});
-      route(a, musicVol);
-      els.push(a);
+    if (music0) {
+      holder.appendChild(music0);
+      await ready(music0).catch(() => {});
+      route(music0, musicVol);
+      els.push(music0);
     }
-    if (voice) {
-      const a = voice0!;
-      holder.appendChild(a);
-      await ready(a).catch(() => {});
-      route(a, voiceVol);
-      els.push(a);
+    if (voice0) {
+      holder.appendChild(voice0);
+      await ready(voice0).catch(() => {});
+      route(voice0, voiceVol);
+      els.push(voice0);
     }
     const c = document.createElement("canvas");
     c.width = W;
@@ -446,7 +521,7 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
     const draw = (t: number) => {
       if (base) ctx.drawImage(base, 0, 0, W, H);
       else if (im) ctx.drawImage(im, 0, 0, W, H);
-      items.forEach((it) => drawItem(ctx, it, W, H));
+      items.forEach((it) => drawItem(ctx, it, W, H, t));
       drawCaption(ctx, caps, t, W, H);
     };
     draw(0);
@@ -481,37 +556,76 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
     onDone(new File([blob], type === "video/mp4" ? "post.mp4" : "post.webm", { type }), true);
   }
 
-  const capNow = caps.find((x) => (isVideo ? now : 0) >= x.start && (isVideo ? now : 0) < x.end);
+  // The typing box sits exactly over the drawn text (its own letters are invisible).
+  const typing = panel === "text" && draft;
+  let typerStyle: React.CSSProperties = {};
+  if (typing) {
+    const fs = draft.size * stageW;
+    const lines = Math.max(1, draft.text.split("\n").length);
+    const w = Math.max(fs, textWidth(draft, fs) + 4);
+    typerStyle = {
+      ...cssFont(draft.font),
+      fontSize: fs,
+      lineHeight: 1.25,
+      width: Math.min(stageW * 3, w),
+      height: lines * fs * 1.25,
+      top: `calc(${draft.y * 100}% - ${(lines * fs * 1.25) / 2}px)`,
+      textAlign: draft.align,
+      caretColor: colorsOf(draft).text,
+    };
+  }
+  const setColor = (hex: string) => {
+    setD({ color: hex });
+    setHsv(hexToHsv(hex));
+  };
+  const setHsvPart = (p: Partial<typeof hsv>) => {
+    const n = { ...hsv, ...p };
+    setHsv(n);
+    setD({ color: hsvToHex(n.h, n.s, n.v) });
+  };
 
   return (
-    <div className="ed" role="dialog" aria-modal="true" aria-label="Edit your post">
+    <div className={`ed${typing ? " typing" : ""}`} ref={root} role="dialog" aria-modal="true" aria-label="Edit your post">
       <div className="ed-top">
-        <button type="button" className="ed-x" onClick={onCancel} aria-label="Cancel" disabled={!!busy}>✕</button>
-        {music && <span className="ed-tag">♪ {music.name}</span>}
+        {typing ? (
+          <button type="button" className="ed-done" onClick={saveDraft}>Done</button>
+        ) : (
+          <>
+            <button type="button" className="ed-x" onClick={onCancel} aria-label="Cancel" disabled={!!busy}>✕</button>
+            {music && <span className="ed-tag">♪ {music.name}</span>}
+          </>
+        )}
       </div>
 
-      <div className="ed-mid" onPointerDown={() => setSel(null)}>
-        <div className="ed-stage" ref={stage} onPointerMove={onMove} style={{ ["--ar" as string]: ar }}>
+      <div className="ed-mid" onPointerDown={() => !panel && setSel(null)}>
+        {typing && (
+          <div className="ed-vsize" onPointerDown={(e) => e.stopPropagation()}>
+            <input type="range" min={0.03} max={0.2} step={0.002} value={draft.size} onChange={(e) => setD({ size: Number(e.target.value) })} aria-label="Text size" />
+          </div>
+        )}
+        <div className="ed-stage" ref={stage} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => (drag.current = null)} style={{ ["--ar" as string]: ar }}>
           {isVideo ? (
             <video ref={vid} src={url} autoPlay loop playsInline muted={!origOn} onLoadedMetadata={(e) => { const v = e.currentTarget; setDur(v.duration); if (v.videoWidth) setAr(v.videoWidth / v.videoHeight); }} />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img ref={img} src={url} alt="" onLoad={(e) => { const i = e.currentTarget; if (i.naturalWidth) setAr(i.naturalWidth / i.naturalHeight); }} onError={() => onDone(file, false)} />
           )}
-          {items.map((it) => (
-            <div
-              key={it.id}
-              className={`ed-item ${it.kind} ${sel === it.id ? "sel" : ""}`}
-              style={{ left: `${it.x * 100}%`, top: `${it.y * 100}%`, ["--fs" as string]: `${it.size * 100}cqw`, color: it.color }}
-              onPointerDown={(e) => onDown(e, it)}
-              onPointerUp={() => onUp(it)}
-            >
-              {it.text.split("\n").map((ln, i) => (
-                <span key={i} style={{ background: boxColor(it.box) || undefined }} className={it.box ? "bx" : ""}>{ln || " "}</span>
-              ))}
-            </div>
-          ))}
-          {capNow && <div className="ed-cap"><span>{capNow.text}</span></div>}
+          <canvas ref={canvas} className="ed-layer" />
+          {typing && (
+            <textarea
+              ref={typer}
+              className="ed-typer"
+              value={draft.text}
+              onChange={(e) => setD({ text: e.target.value.slice(0, 200) })}
+              onFocus={() => setTab("kbd")}
+              wrap="off"
+              spellCheck={false}
+              aria-label="Your text"
+              style={typerStyle}
+            />
+          )}
+          {typing && !draft.text && <span className="ed-typehint">Type something…</span>}
+          {picking && <span className="ed-pickhint">Tap the picture to pick a color</span>}
         </div>
       </div>
 
@@ -519,9 +633,9 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
         <div className="ed-selbar" onPointerDown={(e) => e.stopPropagation()}>
           <label>
             <span>Size</span>
-            <input type="range" min={selected.kind === "emoji" ? 0.06 : 0.03} max={selected.kind === "emoji" ? 0.4 : 0.16} step={0.005} value={selected.size} onChange={(e) => upd(selected.id, { size: Number(e.target.value) })} />
+            <input type="range" min={selected.kind === "emoji" ? 0.06 : 0.03} max={selected.kind === "emoji" ? 0.4 : 0.2} step={0.002} value={selected.size} onChange={(e) => upd(selected.id, { size: Number(e.target.value) })} />
           </label>
-          {selected.kind === "text" && <button type="button" className="ed-chip" onClick={() => { setDraft(selected); setPanel("text"); }}>Edit</button>}
+          {selected.kind === "text" && <button type="button" className="ed-chip" onClick={() => openText(selected)}>Edit</button>}
           <button type="button" className="ed-chip bad" onClick={() => { setItems((xs) => xs.filter((x) => x.id !== selected.id)); setSel(null); }}>Delete</button>
           <button type="button" className="ed-chip on" onClick={() => setSel(null)}>Done</button>
         </div>
@@ -531,10 +645,10 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
 
       {!panel && !selected && (
         <>
-          <p className="ed-hint">{rec === "voice" ? "Recording… talk now" : rec === "caps" ? "Listening for captions…" : "Tap a tool to edit. Drag text and stickers to move them."}</p>
+          <p className="ed-hint">{rec === "voice" ? "Recording… talk now" : rec === "caps" ? "Listening for captions…" : "Tap a tool to edit. Tap text to change it, drag to move it."}</p>
           <div className="ed-tools">
             <button type="button" onClick={() => setPanel("audio")} disabled={!!rec}><span aria-hidden="true">♫</span>Audio</button>
-            <button type="button" onClick={() => { setDraft({ id: crypto.randomUUID(), kind: "text", text: "", x: 0.5, y: 0.45, size: 0.075, color: "#ffffff", box: "" }); setPanel("text"); }} disabled={!!rec}><span aria-hidden="true">Aa</span>Text</button>
+            <button type="button" onClick={() => openText(null)} disabled={!!rec}><span aria-hidden="true">Aa</span>Text</button>
             <button type="button" onClick={() => setPanel("voice")} disabled={rec === "caps"}><span aria-hidden="true">🎙</span>Voice</button>
             <button type="button" onClick={() => setPanel("captions")} disabled={rec === "voice"}><span aria-hidden="true">CC</span>Captions</button>
             <button type="button" onClick={() => setPanel("stickers")} disabled={!!rec}><span aria-hidden="true">☺</span>Stickers</button>
@@ -549,30 +663,71 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
         </>
       )}
 
-      {panel === "text" && draft && (
-        <div className="ed-panel ed-textp" onPointerDown={(e) => e.stopPropagation()}>
-          <textarea
-            autoFocus
-            value={draft.text}
-            onChange={(e) => setDraft({ ...draft, text: e.target.value.slice(0, 200) })}
-            placeholder="Type something…"
-            rows={3}
-            style={{ color: draft.box === "light" ? "#0d0b12" : draft.color, background: boxColor(draft.box) || "transparent" }}
-            aria-label="Text"
-          />
-          <div className="ed-row">
-            {COLORS.map((c) => (
-              <button key={c} type="button" className={`ed-sw ${draft.color === c ? "on" : ""}`} style={{ background: c }} onClick={() => setDraft({ ...draft, color: c })} aria-label={`Color ${c}`} />
-            ))}
+      {typing && (
+        <div className={`ed-tsheet${tab === "kbd" ? " kbd" : ""}`} onPointerDown={(e) => e.stopPropagation()}>
+          <div className="ed-grab" aria-hidden="true" />
+          <div className="ed-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={tab === "kbd"} className={tab === "kbd" ? "on" : ""} onClick={() => setTab("kbd")} aria-label="Keyboard">
+              <svg width="26" height="20" viewBox="0 0 26 20" aria-hidden="true"><rect x="1" y="2" width="24" height="16" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />{[6, 10, 14, 18].map((x) => <rect key={x} x={x} y="6" width="2.4" height="2.4" fill="currentColor" />)}<rect x="7" y="12" width="12" height="2.4" fill="currentColor" /></svg>
+              <small>Type</small>
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "font"} className={tab === "font" ? "on" : ""} onClick={() => setTab("font")}><b>Aa</b><small>Font</small></button>
+            <button type="button" role="tab" aria-selected={tab === "color"} className={tab === "color" ? "on" : ""} onClick={() => setTab("color")}><i className="ed-wheel" aria-hidden="true" /><small>Color</small></button>
+            <button type="button" role="tab" aria-selected={tab === "anim"} className={tab === "anim" ? "on" : ""} onClick={() => setTab("anim")}><b className="ed-motion">A</b><small>Motion</small></button>
+            <button type="button" role="tab" aria-selected={tab === "effect"} className={tab === "effect" ? "on" : ""} onClick={() => setTab("effect")}><b className="ed-fx">A</b><small>Effect</small></button>
+            <button type="button" className={draft.bg ? "on" : ""} onClick={() => setD({ bg: draft.bg === "" ? "solid" : draft.bg === "solid" ? "soft" : "" })} aria-label="Background">
+              <b className={`ed-bgicon ${draft.bg}`}>A</b><small>{draft.bg === "solid" ? "Box" : draft.bg === "soft" ? "Soft box" : "No box"}</small>
+            </button>
+            <button type="button" onClick={() => setD({ align: draft.align === "center" ? "left" : draft.align === "left" ? "right" : "center" })} aria-label="Align">
+              <AlignIcon a={draft.align} /><small>Align</small>
+            </button>
           </div>
-          <div className="ed-row">
-            {(["", "dark", "light", "brand"] as const).map((b) => (
-              <button key={b || "none"} type="button" className={`ed-chip ${draft.box === b ? "on" : ""}`} onClick={() => setDraft({ ...draft, box: b, color: b === "light" && draft.color === "#ffffff" ? "#0d0b12" : draft.color })}>
-                {b === "" ? "Plain" : b === "dark" ? "Dark box" : b === "light" ? "Light box" : "Purple box"}
-              </button>
-            ))}
-          </div>
-          <button type="button" className="ed-next" onClick={saveDraft}>Done</button>
+
+          {tab === "font" && (
+            <div className="ed-grid">
+              {FONTS.map((f) => (
+                <button key={f.k} type="button" className={draft.font === f.k ? "on" : ""} style={cssFont(f.k)} onClick={() => setD({ font: f.k })}>{f.name}</button>
+              ))}
+            </div>
+          )}
+          {tab === "anim" && (
+            <div className="ed-grid">
+              {ANIMS.map((a) => (
+                <button key={a.k} type="button" className={`${draft.anim === a.k ? "on" : ""} ed-a-${a.k}`} onClick={() => setD({ anim: a.k })}><span>{a.name}</span></button>
+              ))}
+            </div>
+          )}
+          {tab === "effect" && (
+            <div className="ed-grid">
+              {EFFECTS.map((f) => (
+                <button key={f.k} type="button" className={draft.effect === f.k ? "on" : ""} onClick={() => setD({ effect: f.k })}><span style={{ ...cssFont(draft.font), ...effectCss[f.k] }}>{f.name}</span></button>
+              ))}
+            </div>
+          )}
+          {tab === "color" && (
+            <div className="ed-colors">
+              <div className="ed-swatches">
+                <button type="button" className={`ed-drop${picking ? " on" : ""}`} onClick={() => setPicking(!picking)} aria-label="Pick a color from the picture">
+                  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 3.6a2.6 2.6 0 0 0-3.7 0l-2.4 2.4-1-1-1.4 1.4 1 1L4 15.3V20h4.7l7.9-7.9 1 1 1.4-1.4-1-1 2.4-2.4a2.6 2.6 0 0 0 0-3.7ZM7.9 18H6v-1.9l7.9-7.9 1.9 1.9Z" fill="currentColor" /></svg>
+                </button>
+                {SWATCHES.map((c) => (
+                  <button key={c} type="button" className={`ed-sw${draft.color.toLowerCase() === c ? " on" : ""}`} style={{ background: c }} onClick={() => setColor(c)} aria-label={`Color ${c}`} />
+                ))}
+              </div>
+              <label className="ed-slide">
+                <span>Hue</span>
+                <input type="range" min={0} max={359} value={Math.round(hsv.h)} onChange={(e) => setHsvPart({ h: Number(e.target.value), s: hsv.s || 1, v: hsv.v || 1 })} style={{ background: "linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" }} />
+              </label>
+              <label className="ed-slide">
+                <span>Saturation</span>
+                <input type="range" min={0} max={100} value={Math.round(hsv.s * 100)} onChange={(e) => setHsvPart({ s: Number(e.target.value) / 100 })} style={{ background: `linear-gradient(90deg,${hsvToHex(hsv.h, 0, hsv.v || 1)},${hsvToHex(hsv.h, 1, hsv.v || 1)})` }} />
+              </label>
+              <label className="ed-slide">
+                <span>Brightness</span>
+                <input type="range" min={0} max={100} value={Math.round(hsv.v * 100)} onChange={(e) => setHsvPart({ v: Number(e.target.value) / 100 })} style={{ background: `linear-gradient(90deg,#000,${hsvToHex(hsv.h, hsv.s, 1)})` }} />
+              </label>
+            </div>
+          )}
         </div>
       )}
 
