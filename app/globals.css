@@ -849,3 +849,9 @@ body:has(.lp) main{padding-bottom:0!important}
 .b.danger-solid:hover{background:#912018}
 @media (max-width:600px){.cf-back{align-items:flex-end;padding:0}.cf-box{border-radius:20px 20px 0 0;padding-bottom:calc(22px + env(safe-area-inset-bottom))}}
 .lp-deleted{max-width:var(--lp-max);margin:14px auto 0;width:calc(100% - 40px)}
+/* Videos and photos open in their own shape: full width on phones, no black side bars. */
+.pv-img{background:#fff}
+.pv-img video{background:#fff}
+@media (max-width:600px){
+  .pv-img video,.pv-img img{width:100%;height:auto;max-height:none;object-fit:contain}
+}
