@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { VIEWS_PUBLIC } from "@/lib/flags";
 import { useRouter } from "next/navigation";
 import { ago } from "@/lib/time";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -333,7 +334,7 @@ export default function Gallery({
               ) : (
                 p.pics.length > 1 && <span className="galmulti" aria-label={`${p.pics.length} photos`}>{Icon.stack()}</span>
               )}
-              {p.social && (
+              {p.social && (owner || VIEWS_PUBLIC) && (
                 <span className="galstats" aria-label={`${p.views} views`}>
                   <span className="galeye">{isVideo(p.url) ? Icon.play() : Icon.eye()} {p.views >= 1000 ? `${(p.views / 1000).toFixed(p.views >= 10000 ? 0 : 1)}K` : p.views}</span>
                 </span>
@@ -417,12 +418,13 @@ export default function Gallery({
                     <button type="button" className="pv-ic pv-right" aria-pressed={p.saved} aria-label={p.saved ? "Remove from saved" : "Save"} onClick={() => flip("save")}>{Icon.save(p.saved)}</button>
                   )}
                 </div>
-                {p.social && (p.likes > 0 || p.reposts > 0 || p.views > 0) && (
+                {p.social && (p.likes > 0 || p.reposts > 0 || (p.views > 0 && (owner || VIEWS_PUBLIC))) && (
                   <p className="pv-count">
                     {[
                       p.likes > 0 && <b key="l">{p.likes} like{p.likes === 1 ? "" : "s"}</b>,
                       p.reposts > 0 && <span key="r">{p.reposts} repost{p.reposts === 1 ? "" : "s"}</span>,
                       p.views > 0 &&
+                        (owner || VIEWS_PUBLIC) &&
                         (owner ? (
                           <button
                             key="v"
