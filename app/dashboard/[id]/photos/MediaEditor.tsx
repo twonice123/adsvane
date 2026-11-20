@@ -6,6 +6,7 @@ import {
   ANIMS, EFFECTS, FONTS, FONTS_URL, SWATCHES, colorsOf, cssFont, drawCaption, drawItem, effectCss, fontStr, hexToHsv, hsvToHex, moves, rgbToHex,
   type Box, type Cap, type Item,
 } from "./textStyles";
+import { EMOJI_GROUPS, PROMO_GROUPS } from "./stickers";
 
 // Instagram-style editor that opens after picking one photo or video:
 // Audio, Text, Voice-over, Captions and Stickers. On "Next" everything is drawn into
@@ -14,8 +15,6 @@ import {
 type Panel = "" | "text" | "stickers" | "audio" | "voice" | "captions";
 type Tab = "kbd" | "font" | "color" | "anim" | "effect";
 
-const EMOJI = ["🔥", "✨", "💅", "💇‍♀️", "✂️", "💈", "❤️", "😍", "👑", "💯", "📍", "📅", "⭐", "🎉", "💜", "👀", "🙌", "💄", "🧴", "🌸"];
-const WORDS = ["BOOK NOW", "NEW", "SALE", "OPEN TODAY", "DM TO BOOK", "WALK-INS WELCOME", "LIMITED SPOTS"];
 const MAX_SECONDS = 15;
 
 const newText = (): Item => ({ id: crypto.randomUUID(), kind: "text", text: "", x: 0.5, y: 0.45, size: 0.075, color: "#ffffff", font: "classic", effect: "soft", anim: "none", bg: "", align: "center" });
@@ -69,6 +68,7 @@ export default function MediaEditor({ file, businessId, onCancel, onDone }: { fi
   const [tab, setTab] = useState<Tab>("kbd");
   const [hsv, setHsv] = useState({ h: 0, s: 0, v: 1 });
   const [picking, setPicking] = useState(false);
+  const [stickTab, setStickTab] = useState("beauty");
   const [music, setMusic] = useState<{ url: string; name: string; soundId?: string; local?: boolean } | null>(null);
   // The shared sound library.
   const [sounds, setSounds] = useState<Sound[] | null>(null);
@@ -421,10 +421,10 @@ export default function MediaEditor({ file, businessId, onCancel, onDone }: { fi
     if (it?.kind === "text") openText(it);
   }
 
-  function addSticker(text: string, word: boolean) {
+  function addSticker(text: string, look?: Pick<Item, "color" | "font" | "effect" | "bg">) {
     const base = newText();
-    const it: Item = word
-      ? { ...base, text, y: 0.3 + Math.random() * 0.2, size: 0.06, color: "#4c3a99", effect: "none", bg: "solid" }
+    const it: Item = look
+      ? { ...base, ...look, text, y: 0.3 + Math.random() * 0.2, size: 0.065 }
       : { ...base, kind: "emoji", text, y: 0.4 + Math.random() * 0.2, size: 0.14, effect: "none" };
     setItems((xs) => [...xs, it]);
     setSel(it.id);
@@ -857,13 +857,39 @@ export default function MediaEditor({ file, businessId, onCancel, onDone }: { fi
       )}
 
       {panel === "stickers" && (
-        <div className="ed-panel" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="ed-panel ed-stick" onPointerDown={(e) => e.stopPropagation()}>
           <div className="ed-ph"><b>Stickers</b><button type="button" className="ed-chip" onClick={() => setPanel("")}>Close</button></div>
-          <div className="ed-words">
-            {WORDS.map((w) => <button key={w} type="button" className="ed-word" onClick={() => addSticker(w, true)}>{w}</button>)}
+          <div className="ed-stabs" role="tablist">
+            {EMOJI_GROUPS.map((x) => (
+              <button key={x.k} type="button" role="tab" aria-selected={stickTab === x.k} className={stickTab === x.k ? "on" : ""} onClick={() => setStickTab(x.k)} aria-label={x.name}>{x.icon}</button>
+            ))}
+            <button type="button" role="tab" aria-selected={stickTab === "promo"} className={`ed-stab-promo${stickTab === "promo" ? " on" : ""}`} onClick={() => setStickTab("promo")}>% Promo</button>
           </div>
-          <div className="ed-emoji">
-            {EMOJI.map((e) => <button key={e} type="button" onClick={() => addSticker(e, false)} aria-label={`Sticker ${e}`}>{e}</button>)}
+          <div className="ed-sbody">
+            {stickTab === "promo" ? (
+              PROMO_GROUPS.map((grp) => (
+                <section key={grp.name}>
+                  <h3 className="ed-sh">{grp.name}</h3>
+                  <div className="ed-words">
+                    {grp.list.map((w) => {
+                      const it = { ...newText(), ...w.look, text: w.text };
+                      const c = colorsOf(it);
+                      return (
+                        <button key={w.text} type="button" className="ed-word" style={{ ...cssFont(w.look.font), background: c.box || "transparent", color: c.text, ...(w.look.bg ? {} : effectCss[w.look.effect]) }} onClick={() => addSticker(w.text, w.look)}>
+                          {w.text}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))
+            ) : (
+              <div className="ed-emoji">
+                {(EMOJI_GROUPS.find((x) => x.k === stickTab) || EMOJI_GROUPS[0]).list().map((e, i) => (
+                  <button key={e + i} type="button" onClick={() => addSticker(e)} aria-label={`Sticker ${e}`}>{e}</button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

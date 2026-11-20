@@ -1012,3 +1012,15 @@ body:has(.lp) main{padding-bottom:0!important}
 .ed-part{display:flex;flex-direction:column;gap:8px}
 .ed-part .ed-row{flex-wrap:nowrap}
 .ed-partr{flex:1;accent-color:#fff}
+.ed-stick{height:min(62dvh,560px);max-height:none;overflow:hidden}
+.ed-stabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px;flex:none;scrollbar-width:none}
+.ed-stabs::-webkit-scrollbar{display:none}
+.ed-stabs button{flex:none;border:0;background:none;font-size:24px;width:44px;height:44px;border-radius:12px;cursor:pointer;line-height:1}
+.ed-stabs button.on{background:rgba(255,255,255,.16)}
+.ed-stabs .ed-stab-promo{width:auto;padding:0 14px;font:800 14px Inter,system-ui,sans-serif;color:#fff;background:var(--brand);border-radius:999px;margin-left:4px}
+.ed-stabs .ed-stab-promo.on{background:#fff;color:var(--brand)}
+.ed-sbody{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:8px}
+.ed-sh{margin:12px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.6)}
+.ed-sbody .ed-word{font-size:16px;padding:9px 13px;border-radius:9px}
+.ed-sbody .ed-emoji{grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:4px}
+.ed-sbody .ed-emoji button{height:50px;font-size:30px;background:none}
