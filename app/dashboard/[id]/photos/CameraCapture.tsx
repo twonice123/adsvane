@@ -13,6 +13,9 @@ export default function CameraCapture({ onShot, onGallery, onClose }: { onShot: 
   const [facing, setFacing] = useState<"user" | "environment">("environment");
   const [mode, setMode] = useState<"photo" | "video">("video");
   const [err, setErr] = useState("");
+  // Camera or microphone blocked for this site: show how to turn it on in this phone's settings.
+  const [blocked, setBlocked] = useState(false);
+  const [tries, setTries] = useState(0);
   const [ready, setReady] = useState(false);
   const [secs, setSecs] = useState(-1);
 
@@ -21,6 +24,7 @@ export default function CameraCapture({ onShot, onGallery, onClose }: { onShot: 
     (async () => {
       setReady(false);
       setErr("");
+      setBlocked(false);
       stream.current?.getTracks().forEach((t) => t.stop());
       try {
         const s = await navigator.mediaDevices.getUserMedia({
@@ -35,14 +39,17 @@ export default function CameraCapture({ onShot, onGallery, onClose }: { onShot: 
           await v.play().catch(() => {});
         }
         setReady(true);
-      } catch {
-        if (!stop) setErr("We can't open your camera. Allow camera and microphone for this site, or pick from your gallery.");
+      } catch (e) {
+        if (stop) return;
+        const name = (e as DOMException)?.name;
+        if (name === "NotAllowedError" || name === "SecurityError") setBlocked(true);
+        else setErr("We can't open your camera on this phone. Pick from your gallery instead.");
       }
     })();
     return () => {
       stop = true;
     };
-  }, [facing]);
+  }, [facing, tries]);
 
   useEffect(
     () => () => {
@@ -108,6 +115,7 @@ export default function CameraCapture({ onShot, onGallery, onClose }: { onShot: 
         <button type="button" className="cam-ic" onClick={onClose} aria-label="Close" disabled={recording}>✕</button>
         {recording && <span className="cam-time">0:{String(Math.floor(secs)).padStart(2, "0")} / 0:15</span>}
       </div>
+      {blocked && <Blocked onRetry={() => setTries((n) => n + 1)} onGallery={onGallery} />}
       {err && (
         <div className="cam-err">
           <p>{err}</p>
@@ -142,6 +150,28 @@ export default function CameraCapture({ onShot, onGallery, onClose }: { onShot: 
         </div>
         <p className="cam-hint">{mode === "photo" ? "Tap to take a photo" : recording ? "Tap to stop" : "Tap to record (up to 15 seconds)"}</p>
       </div>
+    </div>
+  );
+}
+
+// Websites can't open the phone's Settings app themselves, so we show the exact taps for this phone.
+function Blocked({ onRetry, onGallery }: { onRetry: () => void; onGallery: () => void }) {
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && typeof document !== "undefined" && "ontouchend" in document);
+  const samsung = /SamsungBrowser/.test(ua);
+  const steps = ios
+    ? ["Tap aA at the bottom (or top) of Safari", "Tap Website Settings", "Set Camera and Microphone to Allow", "Come back and tap Try again"]
+    : samsung
+      ? ["Tap the lock next to the web address", "Tap Permissions", "Turn on Camera and Microphone", "Come back and tap Try again"]
+      : ["Tap the settings icon next to the web address", "Tap Permissions", "Turn on Camera and Microphone", "Come back and tap Try again"];
+  return (
+    <div className="cam-err cam-blocked">
+      <svg viewBox="0 0 24 24" width="40" height="40" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+      <h2>Allow your camera</h2>
+      <p>To record here, AdsVane needs your camera and microphone. Turn them on in 4 taps:</p>
+      <ol>{steps.map((t) => <li key={t}>{t}</li>)}</ol>
+      <button type="button" className="ed-btn cam-retry" onClick={onRetry}>Try again</button>
+      <button type="button" className="cam-link" onClick={onGallery}>Choose from gallery instead</button>
     </div>
   );
 }

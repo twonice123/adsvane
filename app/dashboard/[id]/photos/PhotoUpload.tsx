@@ -89,7 +89,10 @@ export default function PhotoUpload({
   // Posts start at the in-app camera (record or take a photo), with a gallery button.
   const [cam, setCam] = useState(false);
   const pick = () => input.current?.click();
-  const start = () => (kind === "gallery" && typeof navigator !== "undefined" && !!navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function" ? setCam(true) : pick());
+  const hasCam = () => typeof navigator !== "undefined" && !!navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function";
+  // Posts: first choose Camera or Gallery, like Instagram.
+  const [choose, setChoose] = useState(false);
+  const start = () => (kind === "gallery" && hasCam() ? setChoose(true) : pick());
 
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files || []);
@@ -120,7 +123,8 @@ export default function PhotoUpload({
   }
 
   // One Back step covers the editor and the caption sheet that follows it.
-  useBackClose(!!pending2 || !!editing || cam, () => {
+  useBackClose(!!pending2 || !!editing || cam || choose, () => {
+    setChoose(false);
     setCam(false);
     setEditing(null);
     cancelPost();
@@ -264,6 +268,26 @@ export default function PhotoUpload({
       <button type="button" className={className} disabled={working} onClick={start} aria-label={ariaLabel} aria-busy={working}>
         {working ? (label === "+" ? <span className="spin" aria-hidden="true" /> : kind === "gallery" ? stage || "Posting…" : "Uploading…") : label}
       </button>
+      {choose && (
+        <div className="sh-back" role="dialog" aria-modal="true" aria-label="New post" onClick={(e) => e.target === e.currentTarget && setChoose(false)}>
+          <div className="sh-box pick-src">
+            <div className="sh-top">
+              <h2>New post</h2>
+              <button type="button" className="sh-x" onClick={() => setChoose(false)} aria-label="Close">✕</button>
+            </div>
+            <div className="pick-row">
+              <button type="button" onClick={() => { setChoose(false); setCam(true); }}>
+                <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" /></svg>
+                Camera
+              </button>
+              <button type="button" onClick={() => { setChoose(false); pick(); }}>
+                <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" strokeWidth="1.8" /><circle cx="9" cy="9" r="2" fill="currentColor" /><path d="m4 18 5-5 4 4 3-3 4 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /></svg>
+                Gallery
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {cam && !editing && (
         <CameraCapture
           onClose={() => setCam(false)}

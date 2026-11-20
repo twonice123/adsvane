@@ -1049,3 +1049,17 @@ body:has(.lp) main{padding-bottom:0!important}
 .cam-shoot.rec span{transform:scale(.55);border-radius:10px;border-color:#e0245e}
 .cam-shoot:disabled{opacity:.5}
 .cam-hint{margin:0;font-size:13px;color:rgba(255,255,255,.85)}
+
+/* New post: Camera or Gallery */
+.pick-src{padding-bottom:22px}
+.pick-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pick-row button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;height:120px;border:1.5px solid var(--line);border-radius:18px;background:#fff;color:var(--ink);font:600 17px/1 inherit;font-family:inherit;cursor:pointer}
+.pick-row button:active{background:var(--soft)}
+.pick-row svg{color:var(--brand,#6b5bb5)}
+/* Camera blocked: steps to allow it */
+.cam-blocked{top:50%;transform:translateY(-50%);align-items:center;text-align:left}
+.cam-blocked h2{margin:0;font:700 20px/1.2 inherit;font-family:inherit;color:#fff}
+.cam-blocked p{text-align:center;color:#ddd}
+.cam-blocked ol{margin:0;padding-left:22px;align-self:stretch;display:flex;flex-direction:column;gap:8px;color:#fff;line-height:1.35}
+.cam-retry{align-self:stretch}
+.cam-link{border:0;background:none;color:#cfc6ff;font:inherit;text-decoration:underline;cursor:pointer;padding:4px}
