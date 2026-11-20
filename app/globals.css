@@ -957,3 +957,31 @@ body:has(.lp) main{padding-bottom:0!important}
 .ed-slide input{-webkit-appearance:none;appearance:none;height:10px;border-radius:5px;outline:0;width:100%}
 .ed-slide input::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)}
 .ed-slide input::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+
+/* Posted videos: no player bar, tap to pause, small sound button (like Instagram) */
+.pvid{position:relative;width:100%;display:flex;justify-content:center;line-height:0}
+.pvid video{cursor:pointer}
+.pvid-big{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:66px;height:66px;border-radius:50%;background:rgba(13,11,18,.45);color:#fff;display:grid;place-items:center;pointer-events:none;animation:pvidfade .7s ease-out forwards}
+.pvid-big.stay{animation:none}
+@keyframes pvidfade{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}25%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0}}
+.pvid-snd{position:absolute;right:12px;bottom:12px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(13,11,18,.6);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}
+/* A post ends at its buttons (or its comments): no empty space under it. */
+.pv{padding-bottom:8px}
+@media (max-width:600px){
+  .pv-back{display:flex;flex-direction:column}
+  .pv{min-height:0;margin:auto 0;flex:none}
+}
+.ed-audio{max-height:62dvh}
+.ed-input{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;border-radius:12px;padding:11px 12px;font:16px Inter,system-ui,sans-serif}
+.ed-input::placeholder{color:rgba(255,255,255,.55)}
+.ed-sounds{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.ed-sounds li{display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:12px}
+.ed-sounds li.on{background:rgba(255,255,255,.1)}
+.ed-play{flex:none;width:38px;height:38px;border-radius:10px;border:0;background:var(--brand);color:#fff;font-size:14px;cursor:pointer}
+.ed-sinfo{flex:1;min-width:0;display:flex;flex-direction:column}
+.ed-sinfo b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ed-sinfo small{font-size:12.5px;color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ed-cur{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 12px;font-weight:700}
+.ed-cur span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ed-addsnd{display:flex;flex-direction:column;gap:12px}
+.ed-btn:disabled{opacity:.6}

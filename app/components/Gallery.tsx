@@ -5,6 +5,7 @@ import { ago } from "@/lib/time";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isVideo } from "@/lib/posts";
 import { useBackClose } from "@/lib/useBackClose";
+import PostVideo from "./PostVideo";
 import { addComment, deletePhoto, editPhoto, loadComments, loadViewers, noteShare, removeComment, toggle, type Comment, type Viewer } from "@/app/post-actions";
 
 export type Post = {
@@ -93,6 +94,8 @@ export default function Gallery({
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const replyBox = useRef<HTMLTextAreaElement>(null);
+  // The comment box shows only after tapping the comment button, like Instagram.
+  const [say, setSay] = useState(false);
   const [slide, setSlide] = useState(0);
   const [flash, setFlash] = useState("");
   const hold = useRef<{ t: ReturnType<typeof setTimeout> | null; fired: boolean }>({ t: null, fired: false });
@@ -130,6 +133,7 @@ export default function Gallery({
   const curSocial = cur?.social;
   useEffect(() => {
     setSlide(0);
+    setSay(false);
     if (!curId || !curSocial) return;
     // Count this view (once per person or browser).
     let key = "";
@@ -331,15 +335,11 @@ export default function Gallery({
               onDoubleClick={() => cur.social && !cur.liked && flip("like")}
             >
               {isVideo(cur.pics[slide] || cur.url) ? (
-                <video
+                <PostVideo
                   key={cur.pics[slide] || cur.url}
                   src={cur.pics[slide] || cur.url}
                   poster={cur.posters?.[slide] || undefined}
-                  controls
-                  autoPlay
-                  loop
-                  playsInline
-                  aria-label={cur.text || `${cur.biz.name} video`}
+                  label={cur.text || `${cur.biz.name} video`}
                 />
               ) : (
                 <img key={cur.pics[slide] || cur.url} src={cur.pics[slide] || cur.url} alt={cur.text || `${cur.biz.name} photo`} />
@@ -362,7 +362,7 @@ export default function Gallery({
               {cur.social && (
                 <>
                   <button type="button" className="pv-ic" aria-pressed={cur.liked} aria-label={cur.liked ? "Unlike" : "Like"} onClick={() => flip("like")}>{Icon.heart(cur.liked)}</button>
-                  <button type="button" className="pv-ic" aria-label="Comment" onClick={() => replyBox.current?.focus()}>{Icon.comment()}</button>
+                  <button type="button" className="pv-ic" aria-label="Comment" onClick={() => { setSay(true); setTimeout(() => replyBox.current?.focus(), 30); }}>{Icon.comment()}</button>
                   <button type="button" className="pv-ic" aria-pressed={cur.reposted} aria-label={cur.reposted ? "Undo repost" : "Repost to your page"} onClick={() => flip("repost")}>{Icon.repost(cur.reposted)}</button>
                 </>
               )}
@@ -404,7 +404,7 @@ export default function Gallery({
               </p>
             )}
             {note && <p className="pv-note" role="status">{note}</p>}
-            {cur.social && (
+            {cur.social && (say || cur.comments > 0) && (
               <section className="pv-talk" aria-label="Comments">
                 {talk === null ? (
                   cur.comments > 0 && <p className="muted pv-tl">Loading comments…</p>
@@ -423,7 +423,7 @@ export default function Gallery({
                     </div>
                   ))
                 )}
-                <form className="pv-say" onSubmit={sendComment}>
+                {say && <form className="pv-say" onSubmit={sendComment}>
                   <textarea
                     ref={replyBox}
                     value={reply}
@@ -440,10 +440,9 @@ export default function Gallery({
                     aria-label="Add a comment"
                   />
                   <button type="submit" className="lnk" disabled={!reply.trim() || sending}>{sending ? "Posting…" : "Post"}</button>
-                </form>
+                </form>}
               </section>
             )}
-            <p className="pv-pos">{open + 1} of {n}</p>
           </article>
           {n > 1 && <button type="button" className="lb-nav next" onClick={() => go(1)} aria-label="Next photo">›</button>}
 

@@ -260,6 +260,7 @@ export default function PhotoUpload({
         <MediaEditor
           key={`${editing.name}-${editing.lastModified}`}
           file={editing}
+          businessId={businessId}
           onCancel={() => setEditing(null)}
           onDone={(f, wasEdited) => {
             if (wasEdited) edited.current.add(f);

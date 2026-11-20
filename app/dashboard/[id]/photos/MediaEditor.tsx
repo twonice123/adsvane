@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { browserClient } from "@/lib/supabase/client";
 import {
   ANIMS, EFFECTS, FONTS, FONTS_URL, SWATCHES, colorsOf, cssFont, drawCaption, drawItem, effectCss, fontStr, hexToHsv, hsvToHex, moves, rgbToHex,
   type Box, type Cap, type Item,
@@ -23,8 +24,12 @@ function pickMime() {
   return opts.find((m) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(m)) || "";
 }
 
+type Sound = { id: string; title: string; added_name: string | null; url: string; uses: number };
+const AUDIO_EXT: Record<string, string> = { "audio/mpeg": "mp3", "audio/mp3": "mp3", "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/m4a": "m4a", "audio/aac": "aac", "audio/wav": "wav", "audio/x-wav": "wav", "audio/ogg": "ogg", "audio/webm": "webm", "audio/flac": "flac" };
+
 const media = (src: string, video: boolean) => {
   const el = document.createElement(video ? "video" : "audio") as HTMLMediaElement;
+  if (src.startsWith("http")) el.crossOrigin = "anonymous";
   el.src = src;
   el.preload = "auto";
   (el as HTMLVideoElement).playsInline = true;
@@ -56,7 +61,7 @@ const AlignIcon = ({ a }: { a: Item["align"] }) => (
   </svg>
 );
 
-export default function MediaEditor({ file, onCancel, onDone }: { file: File; onCancel: () => void; onDone: (f: File, edited: boolean) => void }) {
+export default function MediaEditor({ file, businessId, onCancel, onDone }: { file: File; businessId?: string; onCancel: () => void; onDone: (f: File, edited: boolean) => void }) {
   const isVideo = file.type.startsWith("video/");
   const [url] = useState(() => URL.createObjectURL(file));
   const [items, setItems] = useState<Item[]>([]);
@@ -66,7 +71,14 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
   const [tab, setTab] = useState<Tab>("kbd");
   const [hsv, setHsv] = useState({ h: 0, s: 0, v: 1 });
   const [picking, setPicking] = useState(false);
-  const [music, setMusic] = useState<{ url: string; name: string } | null>(null);
+  const [music, setMusic] = useState<{ url: string; name: string; soundId?: string; local?: boolean } | null>(null);
+  // The shared sound library.
+  const [sounds, setSounds] = useState<Sound[] | null>(null);
+  const [q, setQ] = useState("");
+  const [hear, setHear] = useState("");
+  const [adding, setAdding] = useState<{ file: File; title: string; share: boolean; rights: boolean } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const preview = useRef<HTMLAudioElement | null>(null);
   const [musicVol, setMusicVol] = useState(0.8);
   const [voice, setVoice] = useState<{ url: string; seconds: number } | null>(null);
   const [voiceVol, setVoiceVol] = useState(1);
@@ -215,6 +227,80 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
     }
     for (const a of [musicEl.current, voiceEl.current]) if (a) { a.loop = !isVideo; a.currentTime = 0; a.play().catch(() => {}); }
   }, [music, voice, isVideo]);
+
+  useEffect(() => {
+    if (panel !== "audio") {
+      preview.current?.pause();
+      setHear("");
+      return;
+    }
+    let stop = false;
+    const t = setTimeout(async () => {
+      const sb = browserClient();
+      let qb = sb.from("sounds").select("id,title,added_name,url,uses").order("uses", { ascending: false }).order("created_at", { ascending: false }).limit(40);
+      const term = q.trim().replace(/[%_,()]/g, " ");
+      if (term) qb = qb.ilike("title", `%${term}%`);
+      const { data } = await qb;
+      if (!stop) setSounds((data as Sound[]) || []);
+    }, q ? 300 : 0);
+    return () => {
+      stop = true;
+      clearTimeout(t);
+    };
+  }, [panel, q]);
+
+  function listen(s: Sound) {
+    const a = (preview.current ||= new Audio());
+    if (hear === s.id) {
+      a.pause();
+      return setHear("");
+    }
+    a.src = s.url;
+    a.currentTime = 0;
+    a.play().catch(() => {});
+    a.onended = () => setHear("");
+    setHear(s.id);
+  }
+  function pickSound(s: Sound) {
+    preview.current?.pause();
+    setHear("");
+    if (music?.local) URL.revokeObjectURL(music.url);
+    setMusic({ url: s.url, name: s.title, soundId: s.id });
+  }
+  async function addOwn() {
+    if (!adding) return;
+    const title = adding.title.trim().slice(0, 80);
+    if (!title) return setErr("Give your sound a name.");
+    if (adding.share && !adding.rights) return setErr("Tick the box to confirm you can share this sound, or turn off sharing.");
+    setErr("");
+    if (music?.local) URL.revokeObjectURL(music.url);
+    if (!adding.share) {
+      setMusic({ url: URL.createObjectURL(adding.file), name: title, local: true });
+      return setAdding(null);
+    }
+    setSaving(true);
+    try {
+      const sb = browserClient();
+      const { data: u } = await sb.auth.getUser();
+      if (!u.user) throw new Error("login");
+      const id = crypto.randomUUID();
+      const ext = AUDIO_EXT[adding.file.type] || adding.file.name.split(".").pop()?.toLowerCase() || "mp3";
+      const path = `${u.user.id}/${id}.${ext}`;
+      const up = await sb.storage.from("sounds").upload(path, adding.file, { contentType: adding.file.type || "audio/mpeg", cacheControl: "31536000" });
+      if (up.error) throw up.error;
+      const url = sb.storage.from("sounds").getPublicUrl(path).data.publicUrl;
+      let who: string | null = null;
+      if (businessId) who = ((await sb.from("businesses").select("name").eq("id", businessId).maybeSingle()).data as { name?: string } | null)?.name || null;
+      const { error } = await sb.from("sounds").insert({ id, title, path, url, added_by: u.user.id, added_name: who });
+      if (error) throw error;
+      setMusic({ url, name: title, soundId: id });
+      setSounds((xs) => [{ id, title, added_name: who, url, uses: 0 }, ...(xs || [])]);
+      setAdding(null);
+    } catch {
+      setErr("We couldn't add that sound. Try an MP3 or M4A file under 15 MB.");
+    }
+    setSaving(false);
+  }
 
   const selected = items.find((i) => i.id === sel) || null;
   const upd = (id: string, p: Partial<Item>) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x)));
@@ -420,6 +506,7 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
   async function finish() {
     setSel(null);
     if (!edited) return onDone(file, false);
+    if (music?.soundId) browserClient().rpc("use_sound", { sound: music.soundId }).then(() => {}, () => {});
     setErr("");
     try {
       if (!needsVideo) {
@@ -744,8 +831,8 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
       )}
 
       {panel === "audio" && (
-        <div className="ed-panel" onPointerDown={(e) => e.stopPropagation()}>
-          <div className="ed-ph"><b>Audio</b><button type="button" className="ed-chip" onClick={() => setPanel("")}>Done</button></div>
+        <div className="ed-panel ed-audio" onPointerDown={(e) => e.stopPropagation()}>
+          <div className="ed-ph"><b>Audio</b><button type="button" className="ed-chip" onClick={() => { setAdding(null); setPanel(""); }}>Done</button></div>
           <input
             ref={musicInput}
             type="file"
@@ -755,21 +842,58 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
               const f = e.target.files?.[0];
               e.target.value = "";
               if (!f) return;
-              if (music) URL.revokeObjectURL(music.url);
-              setMusic({ url: URL.createObjectURL(f), name: f.name.replace(/\.\w+$/, "").slice(0, 40) });
+              if (f.size > 15 * 1024 * 1024) return setErr("That song file is too big. Sounds can be up to 15 MB.");
+              setErr("");
+              setAdding({ file: f, title: f.name.replace(/\.\w+$/, "").replace(/[_-]+/g, " ").slice(0, 80), share: true, rights: false });
             }}
           />
-          <button type="button" className="ed-btn" onClick={() => musicInput.current?.click()}>{music ? "Change song" : "Add a song from your phone"}</button>
-          {music && (
+          {adding ? (
+            <div className="ed-addsnd">
+              <label className="ed-note" htmlFor="ed-sndname">Name your sound</label>
+              <input id="ed-sndname" className="ed-input" value={adding.title} maxLength={80} onChange={(e) => setAdding({ ...adding, title: e.target.value })} />
+              <label className="ed-check"><input type="checkbox" checked={adding.share} onChange={(e) => setAdding({ ...adding, share: e.target.checked })} /> Share it so others can use it in their posts</label>
+              {adding.share && (
+                <label className="ed-check"><input type="checkbox" checked={adding.rights} onChange={(e) => setAdding({ ...adding, rights: e.target.checked })} /> I made this sound or have permission to share it</label>
+              )}
+              <div className="ed-row">
+                <button type="button" className="ed-btn" onClick={addOwn} disabled={saving}>{saving ? "Adding…" : "Use this sound"}</button>
+                <button type="button" className="ed-chip" onClick={() => setAdding(null)} disabled={saving}>Cancel</button>
+              </div>
+            </div>
+          ) : (
             <>
-              <label className="ed-range"><span>Song volume</span><input type="range" min={0} max={1} step={0.05} value={musicVol} onChange={(e) => setMusicVol(Number(e.target.value))} /></label>
-              <button type="button" className="ed-chip bad" onClick={() => { URL.revokeObjectURL(music.url); setMusic(null); }}>Remove song</button>
+              {music && (
+                <div className="ed-cur">
+                  <span>♪ {music.name}</span>
+                  <button type="button" className="ed-chip bad" onClick={() => { if (music.local) URL.revokeObjectURL(music.url); setMusic(null); }}>Remove</button>
+                </div>
+              )}
+              {music && <label className="ed-range"><span>Song volume</span><input type="range" min={0} max={1} step={0.05} value={musicVol} onChange={(e) => setMusicVol(Number(e.target.value))} /></label>}
+              {isVideo && (
+                <label className="ed-check"><input type="checkbox" checked={origOn} onChange={(e) => setOrigOn(e.target.checked)} /> Keep the video&apos;s own sound</label>
+              )}
+              <input className="ed-input" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search sounds" aria-label="Search sounds" />
+              <ul className="ed-sounds">
+                {sounds === null ? (
+                  <li className="ed-note">Loading sounds…</li>
+                ) : sounds.length === 0 ? (
+                  <li className="ed-note">{q ? "No sounds match that." : "No sounds yet. Add the first one below."}</li>
+                ) : (
+                  sounds.map((x) => (
+                    <li key={x.id} className={music?.soundId === x.id ? "on" : ""}>
+                      <button type="button" className="ed-play" onClick={() => listen(x)} aria-label={hear === x.id ? `Stop ${x.title}` : `Listen to ${x.title}`}>{hear === x.id ? "■" : "▶"}</button>
+                      <span className="ed-sinfo">
+                        <b>{x.title}</b>
+                        <small>{[x.added_name, x.uses ? `${x.uses} post${x.uses === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ") || "AdsVane sound"}</small>
+                      </span>
+                      <button type="button" className={`ed-chip${music?.soundId === x.id ? " on" : ""}`} onClick={() => pickSound(x)}>{music?.soundId === x.id ? "Added" : "Use"}</button>
+                    </li>
+                  ))
+                )}
+              </ul>
+              <button type="button" className="ed-btn" onClick={() => musicInput.current?.click()}>+ Add your own sound</button>
             </>
           )}
-          {isVideo && (
-            <label className="ed-check"><input type="checkbox" checked={origOn} onChange={(e) => setOrigOn(e.target.checked)} /> Keep the video&apos;s own sound</label>
-          )}
-          <p className="ed-note">Only use music you have the rights to share.</p>
         </div>
       )}
 
@@ -797,7 +921,7 @@ export default function MediaEditor({ file, onCancel, onDone }: { file: File; on
         </div>
       )}
 
-      {music && <audio ref={musicEl} src={music.url} preload="auto" />}
+      {music && <audio ref={musicEl} src={music.url} preload="auto" crossOrigin={music.url.startsWith("http") ? "anonymous" : undefined} />}
       {voice && <audio ref={voiceEl} src={voice.url} preload="auto" />}
       {busy && <div className="ed-busy" role="status"><span className="spin" aria-hidden="true" />{busy}</div>}
     </div>
