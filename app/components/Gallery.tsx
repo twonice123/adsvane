@@ -96,11 +96,18 @@ export default function Gallery({
   const replyBox = useRef<HTMLTextAreaElement>(null);
   // The comment box shows only after tapping the comment button, like Instagram.
   const [say, setSay] = useState(false);
-  const [slide, setSlide] = useState(0);
+  // Which picture each post shows (posts with several pictures).
+  const [slides, setSlides] = useState<Record<string, number>>({});
+  const feedRef = useRef<HTMLDivElement>(null);
+  const jumpTo = useRef<number | null>(null);
+  const openAt = (i: number) => {
+    jumpTo.current = i;
+    setOpen(i);
+  };
   const [flash, setFlash] = useState("");
   const hold = useRef<{ t: ReturnType<typeof setTimeout> | null; fired: boolean }>({ t: null, fired: false });
   const ownerMenu = (i: number) => {
-    setOpen(i);
+    openAt(i);
     setMenu("menu");
   };
   const [viewers, setViewers] = useState<Viewer[] | null>(null);
@@ -110,7 +117,12 @@ export default function Gallery({
   const shown = all ? list : list.slice(0, initial);
   const cur = open !== null ? list[open] : null;
 
-  const go = useCallback((d: number) => setOpen((i) => (i === null ? i : (i + d + n) % n)), [n]);
+  // Arrow keys move to the next or previous post on the page.
+  const go = useCallback((d: number) => {
+    const box = feedRef.current;
+    if (!box || open === null) return;
+    box.querySelector<HTMLElement>(`[data-i="${open + d}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [open]);
   const close = useCallback(() => {
     setOpen(null);
     setMenu("");
@@ -119,12 +131,44 @@ export default function Gallery({
   // Phone Back closes the photo instead of leaving the page.
   const leaving = useBackClose(open !== null, close);
 
+  // Opening a post shows every post on one page, starting at the one tapped.
+  useEffect(() => {
+    const i = jumpTo.current;
+    if (i === null || open === null) return;
+    jumpTo.current = null;
+    const el = feedRef.current?.querySelector<HTMLElement>(`[data-i="${i}"]`);
+    const bar = feedRef.current?.querySelector<HTMLElement>(".pf-bar");
+    if (el && feedRef.current) feedRef.current.scrollTop = el.offsetTop - (bar?.offsetHeight || 0);
+  }, [open]);
+  // The post nearest the middle of the screen is the one that plays and counts a view.
+  const ticking = useRef(false);
+  function onFeedScroll() {
+    if (ticking.current) return;
+    ticking.current = true;
+    requestAnimationFrame(() => {
+      ticking.current = false;
+      const box = feedRef.current;
+      if (!box) return;
+      const mid = box.getBoundingClientRect().top + box.clientHeight / 2;
+      let best = -1, dist = Infinity;
+      box.querySelectorAll<HTMLElement>("article[data-i]").forEach((a) => {
+        const r = a.getBoundingClientRect();
+        const d = r.top <= mid && r.bottom >= mid ? 0 : Math.min(Math.abs(r.top - mid), Math.abs(r.bottom - mid));
+        if (d < dist) {
+          dist = d;
+          best = Number(a.dataset.i);
+        }
+      });
+      if (best >= 0) setOpen((o) => (o === best ? o : best));
+    });
+  }
+
   // Open a shared photo link (?photo=id) straight away.
   useEffect(() => {
     const id = new URLSearchParams(location.search).get("photo");
     if (!id) return;
     const i = photos.findIndex((p) => p.id === id);
-    if (i >= 0) setOpen(i);
+    if (i >= 0) openAt(i);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -132,7 +176,6 @@ export default function Gallery({
   const curId = cur?.id;
   const curSocial = cur?.social;
   useEffect(() => {
-    setSlide(0);
     setSay(false);
     if (!curId || !curSocial) return;
     // Count this view (once per person or browser).
@@ -185,8 +228,8 @@ export default function Gallery({
       if (menu) return e.key === "Escape" && setMenu("");
       if ((e.target as HTMLElement)?.tagName === "TEXTAREA" && e.key !== "Escape") return;
       if (e.key === "Escape") close();
-      if (e.key === "ArrowRight") go(1);
-      if (e.key === "ArrowLeft") go(-1);
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); go(1); }
+      if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
     };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -257,7 +300,7 @@ export default function Gallery({
               className={`galitem${p.hidden ? " is-hidden" : ""}${owner ? " ownr" : ""}`}
               onClick={() => {
                 if (hold.current.fired) return void (hold.current.fired = false);
-                setOpen(i);
+                openAt(i);
               }}
               onContextMenu={(e) => {
                 if (!owner || !p.social) return;
@@ -306,110 +349,115 @@ export default function Gallery({
       )}
 
       {cur && open !== null && (
-        <div className="pv-back" role="dialog" aria-modal="true" aria-label={`${cur.biz.name} photo`} onClick={(e) => e.target === e.currentTarget && close()}>
-          {n > 1 && <button type="button" className="lb-nav prev" onClick={() => go(-1)} aria-label="Previous photo">‹</button>}
-          <article className="pv">
-            <header className="pv-top">
-              <Link href={`/b/${cur.biz.slug}`} className="pv-who" onClick={() => { leaving(); close(); }}>
-                <Avatar name={cur.biz.name} url={cur.biz.logo_url} />
-                <b>{cur.biz.name}</b>
-              </Link>
-              {owner && cur.social && (
-                <button type="button" className="pv-ic" onClick={() => setMenu("menu")} aria-label="More options">{Icon.dots()}</button>
-              )}
-              <button type="button" className="pv-ic" onClick={close} aria-label="Close" autoFocus>✕</button>
-            </header>
-            <div
-              className="pv-img"
-              onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
-              onTouchEnd={(e) => {
-                if (touch.current === null) return;
-                const dx = e.changedTouches[0].clientX - touch.current;
-                touch.current = null;
-                if (Math.abs(dx) < 40) return;
-                const step = dx < 0 ? 1 : -1;
-                const last = cur.pics.length - 1;
-                if (last > 0 && slide + step >= 0 && slide + step <= last) setSlide(slide + step);
-                else if (last === 0) go(step);
-              }}
-              onDoubleClick={() => cur.social && !cur.liked && flip("like")}
-            >
-              {isVideo(cur.pics[slide] || cur.url) ? (
-                <PostVideo
-                  key={cur.pics[slide] || cur.url}
-                  src={cur.pics[slide] || cur.url}
-                  poster={cur.posters?.[slide] || undefined}
-                  label={cur.text || `${cur.biz.name} video`}
-                />
-              ) : (
-                <img key={cur.pics[slide] || cur.url} src={cur.pics[slide] || cur.url} alt={cur.text || `${cur.biz.name} photo`} />
-              )}
-              {cur.pics.length > 1 && (
-                <>
-                  <span className="pv-n">{slide + 1}/{cur.pics.length}</span>
-                  {slide > 0 && <button type="button" className="pv-sl prev" onClick={() => setSlide(slide - 1)} aria-label="Previous picture">‹</button>}
-                  {slide < cur.pics.length - 1 && <button type="button" className="pv-sl next" onClick={() => setSlide(slide + 1)} aria-label="Next picture">›</button>}
-                </>
-              )}
-            </div>
-            {cur.pics.length > 1 && (
-              <div className="pv-dots" aria-hidden="true">
-                {cur.pics.map((_, i) => <span key={i} className={i === slide ? "on" : ""} />)}
-              </div>
-            )}
-            {cur.hidden && <p className="pv-hidden">Archived. Only you can see it. Tap ⋯ to show it on your profile again.</p>}
-            <div className="pv-acts">
-              {cur.social && (
-                <>
-                  <button type="button" className="pv-ic" aria-pressed={cur.liked} aria-label={cur.liked ? "Unlike" : "Like"} onClick={() => flip("like")}>{Icon.heart(cur.liked)}</button>
-                  <button type="button" className="pv-ic" aria-label="Comment" onClick={() => { setSay(true); setTimeout(() => replyBox.current?.focus(), 60); }}>{Icon.comment()}</button>
-                  <button type="button" className="pv-ic" aria-pressed={cur.reposted} aria-label={cur.reposted ? "Undo repost" : "Repost to your page"} onClick={() => flip("repost")}>{Icon.repost(cur.reposted)}</button>
-                </>
-              )}
-              <button type="button" className="pv-ic" aria-label="Share" onClick={share}>{Icon.share()}</button>
-              {cur.social && (
-                <button type="button" className="pv-ic pv-right" aria-pressed={cur.saved} aria-label={cur.saved ? "Remove from saved" : "Save"} onClick={() => flip("save")}>{Icon.save(cur.saved)}</button>
-              )}
-            </div>
-            {cur.social && (cur.likes > 0 || cur.reposts > 0 || cur.views > 0) && (
-              <p className="pv-count">
-                {[
-                  cur.likes > 0 && <b key="l">{cur.likes} like{cur.likes === 1 ? "" : "s"}</b>,
-                  cur.reposts > 0 && <span key="r">{cur.reposts} repost{cur.reposts === 1 ? "" : "s"}</span>,
-                  cur.views > 0 &&
-                    (owner ? (
-                      <button
-                        key="v"
-                        type="button"
-                        className="lnk pv-views"
-                        onClick={async () => {
-                          setViewers(null);
-                          setMenu("views");
-                          setViewers(await loadViewers(cur.id));
-                        }}
-                      >
-                        {cur.views} view{cur.views === 1 ? "" : "s"}
-                      </button>
-                    ) : (
-                      <span key="v">{cur.views} view{cur.views === 1 ? "" : "s"}</span>
-                    )),
-                ]
-                  .filter(Boolean)
-                  .flatMap((x, i) => (i ? [" · ", x] : [x]))}
-              </p>
-            )}
-            {cur.text && (
-              <p className="pv-text">
-                <b>{cur.biz.name}</b> {cur.text}
-              </p>
-            )}
-            {note && <p className="pv-note" role="status">{note}</p>}
-            {cur.social && cur.comments > 0 && (
-              <button type="button" className="pv-more" onClick={() => setSay(true)}>
-                {cur.comments === 1 ? "View 1 comment" : `View all ${cur.comments} comments`}
-              </button>
-            )}
-          </article>
+        <div className="pv-back pf" ref={feedRef} role="dialog" aria-modal="true" aria-label="Posts" onScroll={onFeedScroll} onClick={(e) => e.target === e.currentTarget && close()}>
+          <div className="pf-bar">
+            <button type="button" className="pv-ic" onClick={close} aria-label="Close" autoFocus>
+              <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+            <b>Posts</b>
+          </div>
+          {list.map((p, i) => {
+            const sl = Math.min(slides[p.id] || 0, Math.max(0, p.pics.length - 1));
+            const src = p.pics[sl] || p.url;
+            const here = i === open;
+            const setSl = (k: number) => setSlides((x) => ({ ...x, [p.id]: k }));
+            return (
+              <article key={p.id} className="pv" data-i={i} onPointerDownCapture={() => i !== open && setOpen(i)} onFocusCapture={() => i !== open && setOpen(i)}>
+                <header className="pv-top">
+                  <Link href={`/b/${p.biz.slug}`} className="pv-who" onClick={() => { leaving(); close(); }}>
+                    <Avatar name={p.biz.name} url={p.biz.logo_url} />
+                    <b>{p.biz.name}</b>
+                  </Link>
+                  {owner && p.social && (
+                    <button type="button" className="pv-ic" onClick={() => setMenu("menu")} aria-label="More options">{Icon.dots()}</button>
+                  )}
+                </header>
+                <div
+                  className="pv-img"
+                  onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
+                  onTouchEnd={(e) => {
+                    if (touch.current === null) return;
+                    const dx = e.changedTouches[0].clientX - touch.current;
+                    touch.current = null;
+                    if (Math.abs(dx) < 40) return;
+                    const k = sl + (dx < 0 ? 1 : -1);
+                    if (k >= 0 && k < p.pics.length) setSl(k);
+                  }}
+                  onDoubleClick={() => p.social && !p.liked && flip("like")}
+                >
+                  {isVideo(src) ? (
+                    <PostVideo key={src} src={src} poster={p.posters?.[sl] || undefined} label={p.text || `${p.biz.name} video`} active={here} />
+                  ) : (
+                    <img key={src} src={src} alt={p.text || `${p.biz.name} photo`} loading={Math.abs(i - open) < 3 ? "eager" : "lazy"} />
+                  )}
+                  {p.pics.length > 1 && (
+                    <>
+                      <span className="pv-n">{sl + 1}/{p.pics.length}</span>
+                      {sl > 0 && <button type="button" className="pv-sl prev" onClick={() => setSl(sl - 1)} aria-label="Previous picture">‹</button>}
+                      {sl < p.pics.length - 1 && <button type="button" className="pv-sl next" onClick={() => setSl(sl + 1)} aria-label="Next picture">›</button>}
+                    </>
+                  )}
+                </div>
+                {p.pics.length > 1 && (
+                  <div className="pv-dots" aria-hidden="true">
+                    {p.pics.map((_, k) => <span key={k} className={k === sl ? "on" : ""} />)}
+                  </div>
+                )}
+                {p.hidden && <p className="pv-hidden">Archived. Only you can see it. Tap ⋯ to show it on your profile again.</p>}
+                <div className="pv-acts">
+                  {p.social && (
+                    <>
+                      <button type="button" className="pv-ic" aria-pressed={p.liked} aria-label={p.liked ? "Unlike" : "Like"} onClick={() => flip("like")}>{Icon.heart(p.liked)}</button>
+                      <button type="button" className="pv-ic" aria-label="Comment" onClick={() => { setSay(true); setTimeout(() => replyBox.current?.focus(), 60); }}>{Icon.comment()}</button>
+                      <button type="button" className="pv-ic" aria-pressed={p.reposted} aria-label={p.reposted ? "Undo repost" : "Repost to your page"} onClick={() => flip("repost")}>{Icon.repost(p.reposted)}</button>
+                    </>
+                  )}
+                  <button type="button" className="pv-ic" aria-label="Share" onClick={share}>{Icon.share()}</button>
+                  {p.social && (
+                    <button type="button" className="pv-ic pv-right" aria-pressed={p.saved} aria-label={p.saved ? "Remove from saved" : "Save"} onClick={() => flip("save")}>{Icon.save(p.saved)}</button>
+                  )}
+                </div>
+                {p.social && (p.likes > 0 || p.reposts > 0 || p.views > 0) && (
+                  <p className="pv-count">
+                    {[
+                      p.likes > 0 && <b key="l">{p.likes} like{p.likes === 1 ? "" : "s"}</b>,
+                      p.reposts > 0 && <span key="r">{p.reposts} repost{p.reposts === 1 ? "" : "s"}</span>,
+                      p.views > 0 &&
+                        (owner ? (
+                          <button
+                            key="v"
+                            type="button"
+                            className="lnk pv-views"
+                            onClick={async () => {
+                              setViewers(null);
+                              setMenu("views");
+                              setViewers(await loadViewers(p.id));
+                            }}
+                          >
+                            {p.views} view{p.views === 1 ? "" : "s"}
+                          </button>
+                        ) : (
+                          <span key="v">{p.views} view{p.views === 1 ? "" : "s"}</span>
+                        )),
+                    ]
+                      .filter(Boolean)
+                      .flatMap((x, k) => (k ? [" · ", x] : [x]))}
+                  </p>
+                )}
+                {p.text && (
+                  <p className="pv-text">
+                    <b>{p.biz.name}</b> {p.text}
+                  </p>
+                )}
+                {here && note && <p className="pv-note" role="status">{note}</p>}
+                {p.social && p.comments > 0 && (
+                  <button type="button" className="pv-more" onClick={() => setSay(true)}>
+                    {p.comments === 1 ? "View 1 comment" : `View all ${p.comments} comments`}
+                  </button>
+                )}
+              </article>
+            );
+          })}
           {cur.social && say && (
             <div className="cm-page" role="dialog" aria-modal="true" aria-label="Comments">
               <header className="cm-top">
@@ -462,7 +510,6 @@ export default function Gallery({
               </form>
             </div>
           )}
-          {n > 1 && <button type="button" className="lb-nav next" onClick={() => go(1)} aria-label="Next photo">›</button>}
 
           {menu && (
             <div className="pv-sheet-back" onClick={(e) => e.target === e.currentTarget && setMenu("")}>

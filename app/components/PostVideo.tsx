@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 // Sound stays on or off for the next video too.
 let soundOn = true;
 
-export default function PostVideo({ src, poster, label }: { src: string; poster?: string; label: string }) {
+export default function PostVideo({ src, poster, label, active = true }: { src: string; poster?: string; label: string; active?: boolean }) {
   const v = useRef<HTMLVideoElement>(null);
   const tap = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [muted, setMuted] = useState(!soundOn);
@@ -15,7 +15,14 @@ export default function PostVideo({ src, poster, label }: { src: string; poster?
   useEffect(() => {
     const el = v.current;
     if (!el) return;
+    // Only the video on screen plays; the others wait.
+    if (!active) {
+      el.pause();
+      return;
+    }
     el.muted = !soundOn;
+    setMuted(!soundOn);
+    setPaused(false);
     el.play().catch(() => {
       // Phones may block sound until a tap; play silently instead.
       el.muted = true;
@@ -25,7 +32,7 @@ export default function PostVideo({ src, poster, label }: { src: string; poster?
     return () => {
       if (tap.current) clearTimeout(tap.current);
     };
-  }, [src]);
+  }, [src, active]);
 
   function toggle() {
     const el = v.current;
@@ -50,6 +57,7 @@ export default function PostVideo({ src, poster, label }: { src: string; poster?
         poster={poster}
         loop
         playsInline
+        preload={active ? "auto" : "metadata"}
         muted={muted}
         aria-label={label}
         onClick={() => {
@@ -65,7 +73,7 @@ export default function PostVideo({ src, poster, label }: { src: string; poster?
           tap.current = null;
         }}
       />
-      {(paused || hint) && (
+      {active && (paused || hint) && (
         <span className={`pvid-big${paused ? " stay" : ""}`} aria-hidden="true">
           {paused || hint === "pause" ? (
             <svg viewBox="0 0 24 24" width="30" height="30"><path d="M8 5v14l11-7z" fill="currentColor" /></svg>
