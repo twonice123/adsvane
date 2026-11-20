@@ -5,6 +5,7 @@ import { addVideo, uploadPhoto, type PhotoState } from "../../photo-actions";
 import { browserClient } from "@/lib/supabase/client";
 import { useBackClose } from "@/lib/useBackClose";
 import { PHOTO_BUCKET } from "@/lib/data";
+import MediaEditor from "./MediaEditor";
 
 const MAX_SECONDS = 15;
 const MAX_VIDEO_MB = 50;
@@ -98,6 +99,9 @@ export default function PhotoUpload({
 
   const [pending2, setPending2] = useState<{ files: File[]; urls: string[] } | null>(null);
   const [caption, setCaption] = useState("");
+  // One photo or video opens the editor first (text, stickers, music, voice, captions).
+  const [editing, setEditing] = useState<File | null>(null);
+  const edited = useRef(new WeakSet<File>());
 
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files || []);
@@ -119,13 +123,18 @@ export default function PhotoUpload({
     // Work photos: write a caption first, like a social post.
     if (kind === "gallery") {
       setCaption("");
+      if (picked.length === 1) return setEditing(picked[0]);
       setPending2({ files: picked, urls: picked.map((f) => URL.createObjectURL(f)) });
       return;
     }
     send(picked, "");
   }
 
-  useBackClose(!!pending2, () => cancelPost());
+  // One Back step covers the editor and the caption sheet that follows it.
+  useBackClose(!!pending2 || !!editing, () => {
+    setEditing(null);
+    cancelPost();
+  });
 
   useEffect(() => {
     if (!openRef) return;
@@ -165,6 +174,11 @@ export default function PhotoUpload({
     for (const f of picked) {
       if (!f.type.startsWith("video/")) continue;
       const i = await inspectVideo(f);
+      // Videos made in our editor are already cut to 15 seconds (their length can read as unknown).
+      if (edited.current.has(f)) {
+        info.set(f, i);
+        continue;
+      }
       if (!(i.seconds <= MAX_SECONDS + 0.5)) {
         setState({ error: Number.isFinite(i.seconds) ? `Videos can be up to ${MAX_SECONDS} seconds. That one is ${Math.round(i.seconds)} seconds. Trim it on your phone and try again.` : "We couldn't read that video. Please try an MP4 or MOV video." });
         setBusy(false);
@@ -242,6 +256,18 @@ export default function PhotoUpload({
       <button type="button" className={className} disabled={working} onClick={() => input.current?.click()} aria-label={ariaLabel} aria-busy={working}>
         {working ? (label === "+" ? <span className="spin" aria-hidden="true" /> : kind === "gallery" ? "Posting…" : "Uploading…") : label}
       </button>
+      {editing && (
+        <MediaEditor
+          key={`${editing.name}-${editing.lastModified}`}
+          file={editing}
+          onCancel={() => setEditing(null)}
+          onDone={(f, wasEdited) => {
+            if (wasEdited) edited.current.add(f);
+            setEditing(null);
+            setPending2({ files: [f], urls: [URL.createObjectURL(f)] });
+          }}
+        />
+      )}
       {pending2 && (
         <div className="sh-back" role="dialog" aria-modal="true" aria-label="New post" onClick={(e) => e.target === e.currentTarget && cancelPost()}>
           <div className="sh-box np">
