@@ -6,9 +6,12 @@ import { browserClient } from "@/lib/supabase/client";
 import { useBackClose } from "@/lib/useBackClose";
 import { PHOTO_BUCKET } from "@/lib/data";
 import MediaEditor from "./MediaEditor";
+import { compressVideo, shrinkPhoto } from "@/lib/media";
 
 const MAX_SECONDS = 15;
 const MAX_VIDEO_MB = 50;
+// What we keep after making it smaller.
+const MAX_STORED_MB = 25;
 const VIDEO_EXT: Record<string, string> = { "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" };
 
 // How long a video is, and a still picture from its first moment.
@@ -46,26 +49,6 @@ function inspectVideo(file: File): Promise<{ seconds: number; poster: Blob | nul
   });
 }
 
-// Shrinks a photo in the browser so uploads are quick on phones.
-async function shrink(file: File, maxSide: number): Promise<File> {
-  if (!file.type.startsWith("image/")) return file;
-  try {
-    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" } as ImageBitmapOptions);
-    const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
-    const w = Math.round(bmp.width * scale);
-    const h = Math.round(bmp.height * scale);
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    canvas.getContext("2d")!.drawImage(bmp, 0, 0, w, h);
-    const blob: Blob | null = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.85));
-    if (!blob) return file;
-    return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
-  } catch {
-    return file;
-  }
-}
-
 export default function PhotoUpload({
   businessId,
   kind,
@@ -95,7 +78,7 @@ export default function PhotoUpload({
   const [state, setState] = useState<PhotoState>({});
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  const max = kind === "cover" ? 2000 : kind === "logo" ? 800 : 1600;
+  const [stage, setStage] = useState("");
 
   const [pending2, setPending2] = useState<{ files: File[]; urls: string[] } | null>(null);
   const [caption, setCaption] = useState("");
@@ -169,6 +152,24 @@ export default function PhotoUpload({
   async function send(picked: File[], text: string) {
     setBusy(true);
     setState({});
+    // Make big videos smaller first (Instagram size), starting right away while the tap still counts.
+    const out: File[] = [];
+    for (const f of picked) {
+      if (!f.type.startsWith("video/") || edited.current.has(f)) {
+        out.push(f);
+        continue;
+      }
+      const r = await compressVideo(f, (pct) => setStage(`Making your video smaller… ${pct}%`));
+      setStage("");
+      if (r.changed) edited.current.add(r.file);
+      out.push(r.file);
+    }
+    if (out.some((f) => f.type.startsWith("video/") && f.size > MAX_STORED_MB * 1024 * 1024)) {
+      setState({ error: `That video is too big to post (over ${MAX_STORED_MB} MB). Try a shorter or smaller video.` });
+      setBusy(false);
+      return;
+    }
+    picked = out;
     // Check video lengths first, so nothing is posted if one is too long.
     const info = new Map<File, { seconds: number; poster: Blob | null }>();
     for (const f of picked) {
@@ -205,7 +206,7 @@ export default function PhotoUpload({
       if (!batch.length) return;
       const b = base();
       b.set("kind", kind);
-      for (const f of batch) b.append("file", await shrink(f, max));
+      for (const f of batch) b.append("file", await shrinkPhoto(f, kind));
       try {
         r = await uploadPhoto({}, b);
       } catch {
@@ -254,7 +255,7 @@ export default function PhotoUpload({
     <div className={`upl ${wrapClass}`}>
       <input ref={input} type="file" accept={kind === "gallery" ? "image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm" : "image/jpeg,image/png,image/webp,image/heic,image/heif"} multiple={multiple} onChange={onPick} hidden />
       <button type="button" className={className} disabled={working} onClick={() => input.current?.click()} aria-label={ariaLabel} aria-busy={working}>
-        {working ? (label === "+" ? <span className="spin" aria-hidden="true" /> : kind === "gallery" ? "Posting…" : "Uploading…") : label}
+        {working ? (label === "+" ? <span className="spin" aria-hidden="true" /> : kind === "gallery" ? stage || "Posting…" : "Uploading…") : label}
       </button>
       {editing && (
         <MediaEditor
@@ -308,6 +309,7 @@ export default function PhotoUpload({
           </div>
         </div>
       )}
+      {working && stage && <p className="okline" role="status">{stage}</p>}
       {state.error && !working && <p className="err" role="alert">{state.error}</p>}
       {state.ok && !working && <p className="okline" role="status">{state.ok}</p>}
     </div>

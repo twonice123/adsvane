@@ -1009,3 +1009,6 @@ body:has(.lp) main{padding-bottom:0!important}
 .pf .pv-img{container-type:inline-size;background:#fff}
 .pf .pv-img img,.pf .pv-img video{width:100%!important;height:auto;max-height:min(125cqw, calc(100dvh - 210px))!important;object-fit:cover;display:block}
 .pf .pvid{display:block}
+.ed-part{display:flex;flex-direction:column;gap:8px}
+.ed-part .ed-row{flex-wrap:nowrap}
+.ed-partr{flex:1;accent-color:#fff}

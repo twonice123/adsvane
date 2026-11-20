@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { browserClient } from "@/lib/supabase/client";
+import { AUDIO_BITRATE, SOUND_SECONDS, VIDEO_BITRATE, compressVideo, readSong, recorderType, songClip, videoSize } from "@/lib/media";
 import {
   ANIMS, EFFECTS, FONTS, FONTS_URL, SWATCHES, colorsOf, cssFont, drawCaption, drawItem, effectCss, fontStr, hexToHsv, hsvToHex, moves, rgbToHex,
   type Box, type Cap, type Item,
@@ -19,13 +20,8 @@ const MAX_SECONDS = 15;
 
 const newText = (): Item => ({ id: crypto.randomUUID(), kind: "text", text: "", x: 0.5, y: 0.45, size: 0.075, color: "#ffffff", font: "classic", effect: "soft", anim: "none", bg: "", align: "center" });
 
-function pickMime() {
-  const opts = ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
-  return opts.find((m) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(m)) || "";
-}
 
 type Sound = { id: string; title: string; added_name: string | null; url: string; uses: number };
-const AUDIO_EXT: Record<string, string> = { "audio/mpeg": "mp3", "audio/mp3": "mp3", "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/m4a": "m4a", "audio/aac": "aac", "audio/wav": "wav", "audio/x-wav": "wav", "audio/ogg": "ogg", "audio/webm": "webm", "audio/flac": "flac" };
 
 const media = (src: string, video: boolean) => {
   const el = document.createElement(video ? "video" : "audio") as HTMLMediaElement;
@@ -42,6 +38,8 @@ const ready = (el: HTMLMediaElement) =>
     el.onerror = () => rej(new Error("load"));
     setTimeout(() => res(), 8000);
   });
+
+const clock = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 
 let measurer: CanvasRenderingContext2D | null = null;
 function textWidth(it: Item, px: number) {
@@ -76,7 +74,7 @@ export default function MediaEditor({ file, businessId, onCancel, onDone }: { fi
   const [sounds, setSounds] = useState<Sound[] | null>(null);
   const [q, setQ] = useState("");
   const [hear, setHear] = useState("");
-  const [adding, setAdding] = useState<{ file: File; title: string; share: boolean; rights: boolean } | null>(null);
+  const [adding, setAdding] = useState<{ file: File; title: string; share: boolean; rights: boolean; buf: AudioBuffer | null; start: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const preview = useRef<HTMLAudioElement | null>(null);
   const [musicVol, setMusicVol] = useState(0.8);
@@ -267,37 +265,74 @@ export default function MediaEditor({ file, businessId, onCancel, onDone }: { fi
     if (music?.local) URL.revokeObjectURL(music.url);
     setMusic({ url: s.url, name: s.title, soundId: s.id });
   }
+  const partUrl = useRef("");
+  function playPart(f: File, start: number) {
+    const a = (preview.current ||= new Audio());
+    if (hear === "part") {
+      a.pause();
+      return setHear("");
+    }
+    if (!partUrl.current) partUrl.current = URL.createObjectURL(f);
+    a.src = partUrl.current;
+    a.currentTime = start;
+    a.play().catch(() => {});
+    const stopAt = start + SOUND_SECONDS;
+    a.ontimeupdate = () => {
+      if (a.currentTime >= stopAt) {
+        a.pause();
+        setHear("");
+      }
+    };
+    setHear("part");
+  }
+  useEffect(() => {
+    if (adding) return;
+    if (partUrl.current) URL.revokeObjectURL(partUrl.current);
+    partUrl.current = "";
+  }, [adding]);
+
   async function addOwn() {
     if (!adding) return;
     const title = adding.title.trim().slice(0, 80);
     if (!title) return setErr("Give your sound a name.");
     if (adding.share && !adding.rights) return setErr("Tick the box to confirm you can share this sound, or turn off sharing.");
+    if (!adding.buf) return setErr("Still reading the song… try again in a moment.");
     setErr("");
     if (music?.local) URL.revokeObjectURL(music.url);
+    preview.current?.pause();
+    setHear("");
+    setSaving(true);
+    let clip: File;
+    try {
+      // Keep only the part you picked (30 seconds), as a small MP3.
+      clip = await songClip(adding.buf, adding.start);
+    } catch {
+      setSaving(false);
+      return setErr("We couldn't read that song. Try an MP3 or M4A file.");
+    }
     if (!adding.share) {
-      setMusic({ url: URL.createObjectURL(adding.file), name: title, local: true });
+      setMusic({ url: URL.createObjectURL(clip), name: title, local: true });
+      setSaving(false);
       return setAdding(null);
     }
-    setSaving(true);
     try {
       const sb = browserClient();
       const { data: u } = await sb.auth.getUser();
       if (!u.user) throw new Error("login");
       const id = crypto.randomUUID();
-      const ext = AUDIO_EXT[adding.file.type] || adding.file.name.split(".").pop()?.toLowerCase() || "mp3";
-      const path = `${u.user.id}/${id}.${ext}`;
-      const up = await sb.storage.from("sounds").upload(path, adding.file, { contentType: adding.file.type || "audio/mpeg", cacheControl: "31536000" });
+      const path = `${u.user.id}/${id}.mp3`;
+      const up = await sb.storage.from("sounds").upload(path, clip, { contentType: "audio/mpeg", cacheControl: "31536000" });
       if (up.error) throw up.error;
       const url = sb.storage.from("sounds").getPublicUrl(path).data.publicUrl;
       let who: string | null = null;
       if (businessId) who = ((await sb.from("businesses").select("name").eq("id", businessId).maybeSingle()).data as { name?: string } | null)?.name || null;
-      const { error } = await sb.from("sounds").insert({ id, title, path, url, added_by: u.user.id, added_name: who });
+      const { error } = await sb.from("sounds").insert({ id, title, path, url, added_by: u.user.id, added_name: who, seconds: Math.round(Math.min(SOUND_SECONDS, adding.buf.duration - adding.start)) });
       if (error) throw error;
       setMusic({ url, name: title, soundId: id });
       setSounds((xs) => [{ id, title, added_name: who, url, uses: 0 }, ...(xs || [])]);
       setAdding(null);
     } catch {
-      setErr("We couldn't add that sound. Try an MP3 or M4A file under 15 MB.");
+      setErr("We couldn't add that sound. Please check your connection and try again.");
     }
     setSaving(false);
   }
@@ -505,14 +540,21 @@ export default function MediaEditor({ file, businessId, onCancel, onDone }: { fi
 
   async function finish() {
     setSel(null);
-    if (!edited) return onDone(file, false);
+    if (!edited) {
+      if (!isVideo) return onDone(file, false);
+      // No edits: still make a big video smaller (Instagram size) before posting.
+      setBusy("Making your video smaller…");
+      const r = await compressVideo(file, (pct) => setBusy(`Making your video smaller… ${pct}%`));
+      setBusy("");
+      return onDone(r.file, r.changed);
+    }
     if (music?.soundId) browserClient().rpc("use_sound", { sound: music.soundId }).then(() => {}, () => {});
     setErr("");
     try {
       if (!needsVideo) {
         setBusy("Saving your photo…");
         const im = img.current!;
-        const s = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
+        const s = Math.min(1, 1080 / im.naturalWidth);
         const W = Math.round(im.naturalWidth * s);
         const H = Math.round(im.naturalHeight * s);
         const c = document.createElement("canvas");
@@ -522,7 +564,7 @@ export default function MediaEditor({ file, businessId, onCancel, onDone }: { fi
         ctx.drawImage(im, 0, 0, W, H);
         items.forEach((it) => drawItem(ctx, it, W, H, null));
         drawCaption(ctx, caps, 0, W, H);
-        const blob: Blob | null = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9));
+        const blob: Blob | null = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.85));
         if (!blob) throw new Error("x");
         return onDone(new File([blob], "post.jpg", { type: "image/jpeg" }), true);
       }
@@ -535,7 +577,7 @@ export default function MediaEditor({ file, businessId, onCancel, onDone }: { fi
   }
 
   async function renderVideo() {
-    const mime = pickMime();
+    const mime = recorderType();
     if (!mime) throw new Error("no recorder");
     setBusy("Preparing your video… keep this screen open");
     vid.current?.pause();
@@ -569,17 +611,13 @@ export default function MediaEditor({ file, businessId, onCancel, onDone }: { fi
       base = base0!;
       holder.appendChild(base);
       await ready(base);
-      const s = Math.min(1, 1280 / Math.max(base.videoWidth, base.videoHeight));
-      W = Math.round((base.videoWidth * s) / 2) * 2;
-      H = Math.round((base.videoHeight * s) / 2) * 2;
+      ({ W, H } = videoSize(base.videoWidth, base.videoHeight));
       seconds = Math.min(MAX_SECONDS, base.duration || dur || MAX_SECONDS);
       if (origOn) route(base, 1);
       else base.muted = true;
     } else {
       const im = img.current!;
-      const s = Math.min(1, 1280 / Math.max(im.naturalWidth, im.naturalHeight));
-      W = Math.round((im.naturalWidth * s) / 2) * 2;
-      H = Math.round((im.naturalHeight * s) / 2) * 2;
+      ({ W, H } = videoSize(im.naturalWidth, im.naturalHeight));
       seconds = Math.min(MAX_SECONDS, voice ? Math.max(3, voice.seconds) : music ? 10 : 7);
     }
     if (music0) {
@@ -599,7 +637,7 @@ export default function MediaEditor({ file, businessId, onCancel, onDone }: { fi
     c.height = H;
     const ctx = c.getContext("2d")!;
     const stream = new MediaStream([...c.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
-    const mr = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 5_000_000 });
+    const mr = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: VIDEO_BITRATE, audioBitsPerSecond: AUDIO_BITRATE });
     const chunks: Blob[] = [];
     mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
     const done = new Promise<void>((res) => (mr.onstop = () => res()));
@@ -842,21 +880,41 @@ export default function MediaEditor({ file, businessId, onCancel, onDone }: { fi
               const f = e.target.files?.[0];
               e.target.value = "";
               if (!f) return;
-              if (f.size > 15 * 1024 * 1024) return setErr("That song file is too big. Sounds can be up to 15 MB.");
+              if (f.size > 40 * 1024 * 1024) return setErr("That song file is too big. Pick one under 40 MB.");
               setErr("");
-              setAdding({ file: f, title: f.name.replace(/\.\w+$/, "").replace(/[_-]+/g, " ").slice(0, 80), share: true, rights: false });
+              const title = f.name.replace(/\.\w+$/, "").replace(/[_-]+/g, " ").slice(0, 80);
+              setAdding({ file: f, title, share: true, rights: false, buf: null, start: 0 });
+              readSong(f)
+                .then((buf) => setAdding((a) => (a && a.file === f ? { ...a, buf } : a)))
+                .catch(() => {
+                  setAdding(null);
+                  setErr("We couldn't read that song. Try an MP3 or M4A file.");
+                });
             }}
           />
           {adding ? (
             <div className="ed-addsnd">
               <label className="ed-note" htmlFor="ed-sndname">Name your sound</label>
               <input id="ed-sndname" className="ed-input" value={adding.title} maxLength={80} onChange={(e) => setAdding({ ...adding, title: e.target.value })} />
+              {!adding.buf ? (
+                <p className="ed-note">Reading the song…</p>
+              ) : (
+                <div className="ed-part">
+                  <span className="ed-note">
+                    Part to use: {clock(adding.start)} to {clock(Math.min(adding.buf.duration, adding.start + SOUND_SECONDS))}
+                  </span>
+                  <div className="ed-row">
+                    <button type="button" className="ed-play" onClick={() => playPart(adding.file, adding.start)} aria-label={hear === "part" ? "Stop" : "Listen to this part"}>{hear === "part" ? "■" : "▶"}</button>
+                    <input type="range" className="ed-partr" min={0} max={Math.max(0, Math.floor(adding.buf.duration - SOUND_SECONDS))} step={1} value={adding.start} disabled={adding.buf.duration <= SOUND_SECONDS} onChange={(e) => setAdding({ ...adding, start: Number(e.target.value) })} aria-label="Where the sound starts" />
+                  </div>
+                </div>
+              )}
               <label className="ed-check"><input type="checkbox" checked={adding.share} onChange={(e) => setAdding({ ...adding, share: e.target.checked })} /> Share it so others can use it in their posts</label>
               {adding.share && (
                 <label className="ed-check"><input type="checkbox" checked={adding.rights} onChange={(e) => setAdding({ ...adding, rights: e.target.checked })} /> I made this sound or have permission to share it</label>
               )}
               <div className="ed-row">
-                <button type="button" className="ed-btn" onClick={addOwn} disabled={saving}>{saving ? "Adding…" : "Use this sound"}</button>
+                <button type="button" className="ed-btn" onClick={addOwn} disabled={saving}>{saving ? "Saving…" : "Use this sound"}</button>
                 <button type="button" className="ed-chip" onClick={() => setAdding(null)} disabled={saving}>Cancel</button>
               </div>
             </div>
