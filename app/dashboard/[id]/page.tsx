@@ -28,6 +28,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
   const { data } = await supabase.from("businesses").select("*").eq("id", id).eq("owner_id", user!.id).maybeSingle();
   if (!data) notFound();
   const biz = data as Business;
+  const { data: paused } = await supabase.rpc("is_paused", { p_user: user!.id });
 
   const [{ data: promos }, { data: reviews }, { data: photoRows }, ratings, reposts, saved] = await Promise.all([
     supabase.from("promotions").select("*").eq("business_id", id).order("created_at", { ascending: false }).limit(5),
@@ -72,6 +73,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
         </div>
         <ProfileTabs tabs={profileTabs(true)} />
       </div>
+      {paused && <p className="note" role="status">Your account is paused, so customers can&apos;t find this page. <Link href="/settings">Turn it back on in Settings</Link>.</p>}
       {sp.new && <ScrollTop />}
       {sp.new && <p className="ok">Your page is ready! Tap + to post your first photo or video.</p>}
       {sp.promo === "started" && <p className="ok">Your promotion is running. Your profile now shows as Sponsored.</p>}

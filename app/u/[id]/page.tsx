@@ -19,6 +19,10 @@ export default async function Member({ params }: { params: Promise<{ id: string 
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const supabase = await createClient();
   const user = await getMe(supabase);
+  if (user?.id !== id) {
+    const { data: paused } = await supabase.rpc("is_paused", { p_user: id });
+    if (paused) notFound();
+  }
   const [name, posts] = await Promise.all([memberName(supabase, id), memberPosts(supabase, id, "reposts", user?.id || null)]);
   return (
     <div className="wrap narrow2" style={{ margin: "22px auto 44px" }}>

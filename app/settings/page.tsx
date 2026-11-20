@@ -4,6 +4,7 @@ import { getMe } from "@/lib/auth";
 import Security from "./Security";
 import Personal from "./Personal";
 import { disconnect } from "./actions";
+import AccountControls from "./AccountControls";
 
 export const metadata = { title: "Settings", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -31,6 +32,10 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const linked = new Map<string, string[]>();
   for (const c of (conns as { provider: string; account_name: string | null }[]) || []) linked.set(c.provider, [...(linked.get(c.provider) || []), c.account_name || "Connected"]);
   const cm = sp.connect ? CONNECT_MSG[sp.connect] : undefined;
+  const [{ data: pause }, { count: bizCount }] = await Promise.all([
+    supabase.from("account_pauses").select("user_id").eq("user_id", me.id).maybeSingle(),
+    supabase.from("businesses").select("id", { count: "exact", head: true }).eq("owner_id", me.id),
+  ]);
   return (
     <div className="wrap narrow dwrap" style={{ marginTop: 22 }}>
       <h1>Settings</h1>
@@ -63,6 +68,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           );
         })}
       </section>
+      <AccountControls paused={!!pause} isBusiness={(bizCount || 0) > 0} />
       <form action="/auth/signout" method="post" style={{ marginTop: 18 }}>
         <button className="b ghost" type="submit" style={{ width: "100%" }}>Sign out</button>
       </form>

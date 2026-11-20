@@ -37,7 +37,8 @@ const Svg = ({ children }: { children: React.ReactNode }) => (
   <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
 );
 
-export default async function Landing() {
+export default async function Landing({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
+  const sp = await searchParams;
   const supabase = await createClient();
   const me = await getMe(supabase);
   // Real photos from AdsVane businesses fill the split picture (placeholders until the final pictures are in).
@@ -46,7 +47,7 @@ export default async function Landing() {
 
   return (
     <div className="lp">
-      {!me && <Welcome />}
+      {sp.deleted ? <p className="ok lp-deleted" role="status">Your account was deleted. Thanks for being part of AdsVane.</p> : !me && <Welcome />}
 
       {/* 1. Hero: split picture on one side, the search on the other */}
       <section className="lp-hero">
