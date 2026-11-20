@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROMOTIONS_ON } from "@/lib/flags";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { type Business } from "@/lib/data";
@@ -14,6 +15,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Promote({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!PROMOTIONS_ON) notFound();
   const supabase = await createClient();
   const user = await getMe(supabase);
   const { data } = await supabase.from("businesses").select("*").eq("id", id).eq("owner_id", user!.id).maybeSingle();

@@ -1,4 +1,5 @@
 import type { Business, Promotion } from "./data";
+import { PROMOTIONS_ON } from "@/lib/flags";
 import { isRunning } from "./data";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -13,6 +14,7 @@ export async function ratingsFor(supabase: SupabaseClient, ids: string[]) {
 }
 
 export async function sponsoredIds(supabase: SupabaseClient, ids?: string[]) {
+  if (!PROMOTIONS_ON) return new Set<string>();
   let q = supabase
     .from("promotions")
     .select("business_id,status,ends_at,show_in_search")

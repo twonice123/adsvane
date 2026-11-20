@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROMOTIONS_ON } from "@/lib/flags";
 import { COMPANY, UPDATED } from "@/lib/legal";
 import ContactLine from "@/app/components/ContactLine";
 
@@ -24,7 +25,7 @@ export default function Privacy() {
       </nav>
 
       <h2>About the Service</h2>
-      <p>AdsVane is a local business directory. Customers create a free account to search for local businesses, save their favorites and leave reviews. Business owners create a free profile, post photos and short videos of their work, and can choose to promote their profile. Business owners can also connect their own Facebook Page and Instagram professional account so that posts they choose to publish on AdsVane are also published to those accounts.</p>
+      <p>AdsVane is a local business directory. Customers create a free account to search for local businesses, save their favorites and leave reviews. Business owners create a free profile, post photos and short videos of their work{PROMOTIONS_ON ? ", and can choose to promote their profile" : ""}. Business owners can also connect their own Facebook Page and Instagram professional account so that posts they choose to publish on AdsVane are also published to those accounts.</p>
 
       <h2 id="collect">1. Information we collect</h2>
       <h3>Information you give us</h3>
@@ -33,7 +34,7 @@ export default function Privacy() {
         <li><b>Customer profile:</b> your first name and, if you choose, your ZIP code.</li>
         <li><b>Business profile:</b> business name, category, address, phone number, website, social media links, description, hours, services, profile picture, cover photo, and the photos, videos and captions you post. Business profiles are public.</li>
         <li><b>Your activity:</b> businesses you save, posts you like, save or repost, comments and reviews you write.</li>
-        <li><b>Promotions:</b> the settings of any promotion a business chooses to run.</li>
+        {PROMOTIONS_ON && <li><b>Promotions:</b> the settings of any promotion a business chooses to run.</li>}
         <li><b>Security settings:</b> if you turn on two-step login, a secret used to check the codes from your authenticator app.</li>
       </ul>
       <h3>Information collected automatically</h3>
@@ -61,7 +62,7 @@ export default function Privacy() {
         <li>To show business profiles, posts and reviews, and to show businesses near you in search.</li>
         <li>To let you save, like, repost and comment, and to notify business owners about activity on their posts.</li>
         <li>To publish posts to connected Facebook and Instagram accounts when you ask us to.</li>
-        <li>To show sponsored listings. Paid placements are always labeled &ldquo;Sponsored&rdquo;.</li>
+        {PROMOTIONS_ON && <li>To show sponsored listings. Paid placements are always labeled &ldquo;Sponsored&rdquo;.</li>}
         <li>To send service emails, such as sign-in links, password resets and email-change confirmations.</li>
         <li>To prevent fraud, spam and abuse, and to fix problems.</li>
       </ul>

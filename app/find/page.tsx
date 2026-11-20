@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROMOTIONS_ON } from "@/lib/flags";
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { CATEGORIES, isRunning, starText, type Business, type Promotion } from "@/lib/data";
@@ -104,7 +105,9 @@ export default async function Directory({ searchParams }: { searchParams: Promis
 
   // Paid ads: shown when the search is inside one of the places the owner picked,
   // even if the shop itself is somewhere else.
-  const { data: promoRows } = await supabase
+  const { data: promoRows } = !PROMOTIONS_ON
+    ? { data: [] }
+    : await supabase
     .from("promotions")
     .select("business_id,status,ends_at,show_in_search,targets,goal,photo_ids")
     .eq("status", "active")

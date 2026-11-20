@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { PROMOTIONS_ON } from "@/lib/flags";
 import { isRunning, type Promotion } from "./data";
 import { group, isVideo } from "./posts";
 
@@ -18,7 +19,9 @@ type Row = { id: string; url: string; poster_url: string | null; post_text: stri
 // (videos before photos), then the newest posts from everyone else.
 export async function billboard(supabase: SupabaseClient, limit = 24): Promise<Ad[]> {
   const [{ data: promos }, { data: rows }] = await Promise.all([
-    supabase.from("promotions").select("business_id,status,ends_at").eq("status", "active").gt("ends_at", new Date().toISOString()),
+    PROMOTIONS_ON
+      ? supabase.from("promotions").select("business_id,status,ends_at").eq("status", "active").gt("ends_at", new Date().toISOString())
+      : Promise.resolve({ data: [] }),
     supabase
       .from("business_photos")
       .select("id,url,poster_url,post_text,caption,business_id,post_id,position,created_at")

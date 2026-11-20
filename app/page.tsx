@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROMOTIONS_ON } from "@/lib/flags";
 import { billboard } from "@/lib/billboard";
 import { createClient } from "@/lib/supabase/server";
 import { getMe } from "@/lib/auth";
@@ -88,7 +89,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
             <div className="board-main slot video">
               <span className="slot-ic big" aria-hidden="true"><svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor"><path d="M8 5.5v13l11-6.5z" /></svg></span>
               <b>Featured video goes here</b>
-              <small>7 to 15 second promo video</small>
+              <small>7 to 15 second video</small>
             </div>
           </div>
         </div>
@@ -127,7 +128,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               <li>A free profile with your photos, videos and reviews</li>
               <li>Post your work in seconds, right from your phone</li>
               <li>A QR code so happy customers leave reviews</li>
-              <li>Promote your page and show up on the AdsVane Billboard</li>
+              {PROMOTIONS_ON && <li>Promote your page and show up on the AdsVane Billboard</li>}
             </ul>
             <div className="lp-forbiz-btns">
               <Link href="/signup" className="b">Create your business profile</Link>
@@ -152,7 +153,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
             <Link href="/terms">Terms</Link>
             <Link href="/data-deletion">Delete your data</Link>
           </nav>
-          <small>© {new Date().getFullYear()} AdsVane · Free listings for local businesses. Paid placements are always labeled Sponsored.</small>
+          <small>© {new Date().getFullYear()} AdsVane · Free listings for local businesses.{PROMOTIONS_ON && " Paid placements are always labeled Sponsored."}</small>
         </div>
       </footer>
     </div>

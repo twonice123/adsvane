@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { PROMOTIONS_ON } from "@/lib/flags";
 import Link from "next/link";
 import "./globals.css";
 import { siteUrl } from "@/lib/data";
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main>{children}</main>
         <footer>
           <div className="wrap">
-            AdsVane · Free listings for local businesses. Paid placements are always labeled Sponsored. · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a>
+            AdsVane · Free listings for local businesses.{PROMOTIONS_ON && " Paid placements are always labeled Sponsored."} · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a>
           </div>
         </footer>
       </body>

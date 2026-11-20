@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROMOTIONS_ON } from "@/lib/flags";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/server";
@@ -56,11 +57,12 @@ export default async function Manage({ params, searchParams }: { params: Promise
           photoCount={posts.filter((p) => !p.hidden).length}
           rating={r ? Number(r.rating) : null}
           reviewCount={r ? r.review_count : 0}
-          sponsored={!!running}
+          sponsored={PROMOTIONS_ON && !!running}
           cover={<Cover url={biz.cover_url} focus={biz.cover_focus} />}
           picture={<Logo name={biz.name} url={biz.logo_url} size="xl" focus={biz.logo_focus} />}
         />
-        <div className="pbar">
+        <div className={`pbar${PROMOTIONS_ON ? "" : " pbar-solo"}`}>
+          {PROMOTIONS_ON && (<>
           <div className="pbar-main">
             <b>Promote your account</b>
             <small>
@@ -69,6 +71,7 @@ export default async function Manage({ params, searchParams }: { params: Promise
             </small>
           </div>
           <Link className="pbar-btn" href={`/dashboard/${id}/promote`}>Promote page</Link>
+          </>)}
           <PhotoUpload businessId={id} kind="gallery" label="+" ariaLabel="New post" multiple className="pbar-plus" wrapClass="pbar-up" postTrigger />
         </div>
         <ProfileTabs tabs={profileTabs(true)} />
@@ -76,8 +79,8 @@ export default async function Manage({ params, searchParams }: { params: Promise
       {paused && <p className="note" role="status">Your account is paused, so customers can&apos;t find this page. <Link href="/settings">Turn it back on in Settings</Link>.</p>}
       {sp.new && <ScrollTop />}
       {sp.new && <p className="ok">Your page is ready! Tap + to post your first photo or video.</p>}
-      {sp.promo === "started" && <p className="ok">Your promotion is running. Your profile now shows as Sponsored.</p>}
-      {sp.promo === "stopped" && <p className="note">Promotion stopped. Your free listing still shows in search.</p>}
+      {PROMOTIONS_ON && sp.promo === "started" && <p className="ok">Your promotion is running. Your profile now shows as Sponsored.</p>}
+      {PROMOTIONS_ON && sp.promo === "stopped" && <p className="note">Promotion stopped. Your free listing still shows in search.</p>}
 
       <div className="grid" id="ptb" data-tab="photos" style={{ marginTop: 10, gridTemplateColumns: "1fr" }}>
         <div className="stack">

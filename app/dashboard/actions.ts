@@ -1,5 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
+import { PROMOTIONS_ON } from "@/lib/flags";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { addressText, geocode, locate } from "@/lib/geo";
@@ -122,6 +123,7 @@ export async function saveBusiness(_prev: FormState, fd: FormData): Promise<Form
 export type PromoState = { error?: string };
 
 export async function startPromotion(_prev: PromoState, fd: FormData): Promise<PromoState> {
+  if (!PROMOTIONS_ON) return { error: "Promotions aren't available right now." };
   const { supabase, user } = await requireUser();
   const businessId = str(fd, "business_id", 40);
   const daily = Math.round(Number(fd.get("daily")) * 100);

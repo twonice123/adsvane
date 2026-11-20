@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROMOTIONS_ON } from "@/lib/flags";
 import { COMPANY, UPDATED } from "@/lib/legal";
 import ContactLine from "@/app/components/ContactLine";
 
@@ -15,7 +16,7 @@ export default function Terms() {
       <p>You must be at least 13 years old, give a real email address, and keep your password safe. You are responsible for what happens under your account. Tell us right away if you think someone else is using it.</p>
 
       <h2>2. Business profiles</h2>
-      <p>If you create a business profile, you confirm that you own or are allowed to represent that business and that the details you add are true. Listings are free. Promotions are optional and are always labeled &ldquo;Sponsored&rdquo;.</p>
+      <p>If you create a business profile, you confirm that you own or are allowed to represent that business and that the details you add are true. Listings are free.{PROMOTIONS_ON && <> Promotions are optional and are always labeled &ldquo;Sponsored&rdquo;.</>}</p>
 
       <h2>3. Your content</h2>
       <p>You keep ownership of the photos, videos, captions, reviews and other content you post. You give AdsVane a non-exclusive, worldwide, royalty-free license to host, show and share that content on the Service so it can work (for example, showing your posts on your profile and in search). This license ends when you delete the content or your account, except for copies others already reposted on AdsVane or that are in routine backups for a limited time.</p>
