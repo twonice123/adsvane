@@ -362,7 +362,7 @@ export default function Gallery({
               {cur.social && (
                 <>
                   <button type="button" className="pv-ic" aria-pressed={cur.liked} aria-label={cur.liked ? "Unlike" : "Like"} onClick={() => flip("like")}>{Icon.heart(cur.liked)}</button>
-                  <button type="button" className="pv-ic" aria-label="Comment" onClick={() => { setSay(true); setTimeout(() => replyBox.current?.focus(), 30); }}>{Icon.comment()}</button>
+                  <button type="button" className="pv-ic" aria-label="Comment" onClick={() => { setSay(true); setTimeout(() => replyBox.current?.focus(), 60); }}>{Icon.comment()}</button>
                   <button type="button" className="pv-ic" aria-pressed={cur.reposted} aria-label={cur.reposted ? "Undo repost" : "Repost to your page"} onClick={() => flip("repost")}>{Icon.repost(cur.reposted)}</button>
                 </>
               )}
@@ -404,10 +404,28 @@ export default function Gallery({
               </p>
             )}
             {note && <p className="pv-note" role="status">{note}</p>}
-            {cur.social && (say || cur.comments > 0) && (
-              <section className="pv-talk" aria-label="Comments">
+            {cur.social && cur.comments > 0 && (
+              <button type="button" className="pv-more" onClick={() => setSay(true)}>
+                {cur.comments === 1 ? "View 1 comment" : `View all ${cur.comments} comments`}
+              </button>
+            )}
+          </article>
+          {cur.social && say && (
+            <div className="cm-page" role="dialog" aria-modal="true" aria-label="Comments">
+              <header className="cm-top">
+                <button type="button" className="pv-ic" onClick={() => setSay(false)} aria-label="Back to the post">
+                  <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </button>
+                <h2>Comments</h2>
+              </header>
+              <div className="cm-list">
                 {talk === null ? (
-                  cur.comments > 0 && <p className="muted pv-tl">Loading comments…</p>
+                  <p className="muted cm-empty">Loading comments…</p>
+                ) : talk.length === 0 ? (
+                  <div className="cm-empty">
+                    <b>No comments yet</b>
+                    <span className="muted">Ask a question or say something nice.</span>
+                  </div>
                 ) : (
                   talk.map((c) => (
                     <div key={c.id} className="pv-c">
@@ -423,27 +441,27 @@ export default function Gallery({
                     </div>
                   ))
                 )}
-                {say && <form className="pv-say" onSubmit={sendComment}>
-                  <textarea
-                    ref={replyBox}
-                    value={reply}
-                    onChange={(e) => setReply(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        sendComment(e);
-                      }
-                    }}
-                    rows={1}
-                    maxLength={1000}
-                    placeholder={talk && talk.length ? "Add a comment…" : "Ask a question or say something nice…"}
-                    aria-label="Add a comment"
-                  />
-                  <button type="submit" className="lnk" disabled={!reply.trim() || sending}>{sending ? "Posting…" : "Post"}</button>
-                </form>}
-              </section>
-            )}
-          </article>
+              </div>
+              <form className="cm-say" onSubmit={sendComment}>
+                <textarea
+                  ref={replyBox}
+                  value={reply}
+                  onChange={(e) => setReply(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendComment(e);
+                    }
+                  }}
+                  rows={1}
+                  maxLength={1000}
+                  placeholder="Add a comment…"
+                  aria-label="Add a comment"
+                />
+                <button type="submit" className="cm-send" disabled={!reply.trim() || sending}>{sending ? "Sending…" : "Send"}</button>
+              </form>
+            </div>
+          )}
           {n > 1 && <button type="button" className="lb-nav next" onClick={() => go(1)} aria-label="Next photo">›</button>}
 
           {menu && (
