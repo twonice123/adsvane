@@ -6,6 +6,7 @@ import { browserClient } from "@/lib/supabase/client";
 import { useBackClose } from "@/lib/useBackClose";
 import { PHOTO_BUCKET } from "@/lib/data";
 import MediaEditor from "./MediaEditor";
+import CameraCapture from "./CameraCapture";
 import { compressVideo, shrinkPhoto } from "@/lib/media";
 
 const MAX_SECONDS = 15;
@@ -85,6 +86,10 @@ export default function PhotoUpload({
   // One photo or video opens the editor first (text, stickers, music, voice, captions).
   const [editing, setEditing] = useState<File | null>(null);
   const edited = useRef(new WeakSet<File>());
+  // Posts start at the in-app camera (record or take a photo), with a gallery button.
+  const [cam, setCam] = useState(false);
+  const pick = () => input.current?.click();
+  const start = () => (kind === "gallery" && typeof navigator !== "undefined" && !!navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function" ? setCam(true) : pick());
 
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files || []);
@@ -106,6 +111,7 @@ export default function PhotoUpload({
     // Work photos: write a caption first, like a social post.
     if (kind === "gallery") {
       setCaption("");
+      setCam(false);
       if (picked.length === 1) return setEditing(picked[0]);
       setPending2({ files: picked, urls: picked.map((f) => URL.createObjectURL(f)) });
       return;
@@ -114,14 +120,15 @@ export default function PhotoUpload({
   }
 
   // One Back step covers the editor and the caption sheet that follows it.
-  useBackClose(!!pending2 || !!editing, () => {
+  useBackClose(!!pending2 || !!editing || cam, () => {
+    setCam(false);
     setEditing(null);
     cancelPost();
   });
 
   useEffect(() => {
     if (!openRef) return;
-    openRef.current = () => input.current?.click();
+    openRef.current = start;
     return () => {
       openRef.current = null;
     };
@@ -129,7 +136,7 @@ export default function PhotoUpload({
 
   useEffect(() => {
     if (!postTrigger) return;
-    const open = () => input.current?.click();
+    const open = start;
     window.addEventListener("av:newpost", open);
     document.body.dataset.canPost = "1";
     const u = new URL(location.href);
@@ -254,9 +261,21 @@ export default function PhotoUpload({
   return (
     <div className={`upl ${wrapClass}`}>
       <input ref={input} type="file" accept={kind === "gallery" ? "image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm" : "image/jpeg,image/png,image/webp,image/heic,image/heif"} multiple={multiple} onChange={onPick} hidden />
-      <button type="button" className={className} disabled={working} onClick={() => input.current?.click()} aria-label={ariaLabel} aria-busy={working}>
+      <button type="button" className={className} disabled={working} onClick={start} aria-label={ariaLabel} aria-busy={working}>
         {working ? (label === "+" ? <span className="spin" aria-hidden="true" /> : kind === "gallery" ? stage || "Posting…" : "Uploading…") : label}
       </button>
+      {cam && !editing && (
+        <CameraCapture
+          onClose={() => setCam(false)}
+          onGallery={pick}
+          onShot={(f) => {
+            // Videos recorded here are already 15 seconds or less.
+            edited.current.add(f);
+            setCam(false);
+            setEditing(f);
+          }}
+        />
+      )}
       {editing && (
         <MediaEditor
           key={`${editing.name}-${editing.lastModified}`}
