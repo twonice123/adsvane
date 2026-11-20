@@ -106,7 +106,7 @@ export default async function Directory({ searchParams }: { searchParams: Promis
   // even if the shop itself is somewhere else.
   const { data: promoRows } = await supabase
     .from("promotions")
-    .select("business_id,status,ends_at,show_in_search,targets,goal")
+    .select("business_id,status,ends_at,show_in_search,targets,goal,photo_ids")
     .eq("status", "active")
     .eq("show_in_search", true)
     .gt("ends_at", new Date().toISOString());
@@ -114,10 +114,13 @@ export default async function Directory({ searchParams }: { searchParams: Promis
   const searchState = place ? splitPlace(place).state || null : origin ? region : null;
   const sponsored = new Set<string>();
   const toSite = new Set<string>();
+  // The post each sponsored shop chose to promote; it shows first in their row.
+  const adPost = new Map<string, string>();
   const inPool = new Set(pool.map((b) => b.id));
-  for (const p of ((promoRows as Pick<Promotion, "business_id" | "status" | "ends_at" | "targets" | "goal">[]) || []).filter(isRunning)) {
+  for (const p of ((promoRows as Pick<Promotion, "business_id" | "status" | "ends_at" | "targets" | "goal" | "photo_ids">[]) || []).filter(isRunning)) {
     if (!reaches(p.targets, origin, searchState)) continue;
     if (p.goal === "website") toSite.add(p.business_id);
+    if (p.photo_ids?.[0]) adPost.set(p.business_id, p.photo_ids[0]);
     if (inPool.has(p.business_id)) sponsored.add(p.business_id);
     else if (p.targets?.length && (origin || searchState)) {
       const b = all.find((x) => x.id === p.business_id);
@@ -135,14 +138,16 @@ export default async function Directory({ searchParams }: { searchParams: Promis
   const [ratings, { data: photoRows }] = await Promise.all([
     ratingsFor(supabase, ids),
     ids.length
-      ? supabase.from("business_photos").select("business_id, url, poster_url").in("business_id", ids).eq("hidden", false).order("created_at", { ascending: false }).limit(1000)
+      ? supabase.from("business_photos").select("id, business_id, url, poster_url").in("business_id", ids).eq("hidden", false).order("created_at", { ascending: false }).limit(1000)
       : Promise.resolve({ data: [] as { business_id: string; url: string }[] }),
   ]);
   const thumbs = new Map<string, string[]>();
-  for (const p of (photoRows as { business_id: string; url: string; poster_url: string | null }[]) || []) {
+  for (const p of (photoRows as { id: string; business_id: string; url: string; poster_url: string | null }[]) || []) {
     const t = thumbs.get(p.business_id) || [];
     const pic = isVideo(p.url) ? p.poster_url : p.url;
-    if (pic && t.length < 10) thumbs.set(p.business_id, [...t, pic]);
+    if (!pic) continue;
+    if (sponsored.has(p.business_id) && adPost.get(p.business_id) === p.id) thumbs.set(p.business_id, [pic, ...t].slice(0, 10));
+    else if (t.length < 10) thumbs.set(p.business_id, [...t, pic]);
   }
   // Closest first when we know where someone is searching from.
   const byDistance = (a: Business, b: Business) => {

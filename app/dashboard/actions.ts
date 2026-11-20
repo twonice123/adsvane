@@ -165,6 +165,7 @@ export async function startPromotion(_prev: PromoState, fd: FormData): Promise<P
   const ageMin = Number(fd.get("age_min"));
   if (!Number.isInteger(ageMin) || ageMin < AGE_MIN || ageMin > AGE_MAX) return { error: "Pick a minimum age." };
   const goal = fd.get("goal") === "website" ? "website" : "profile";
+  const objective = goal === "website" ? "website" : fd.get("objective") === "views" ? "views" : "profile";
   const audienceName = str(fd, "audience_name", 60);
   const saveAudience = fd.get("save_audience") === "on" && !!audienceName;
 
@@ -195,6 +196,7 @@ export async function startPromotion(_prev: PromoState, fd: FormData): Promise<P
     targets,
     age_min: ageMin,
     goal,
+    objective,
     audience_name: audienceName || null,
     photo_ids: adPhotos,
     show_in_search: inSearch,

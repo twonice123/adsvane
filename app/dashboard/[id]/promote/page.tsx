@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { AMENITY_LABEL, type Business } from "@/lib/data";
-import { ratingsFor } from "@/lib/queries";
-import PromoteForm, { type Audience } from "./PromoteForm";
+import { type Business } from "@/lib/data";
+import PromoteForm from "./PromoteForm";
 import { getMe } from "@/lib/auth";
 import { group, isVideo } from "@/lib/posts";
 import { addressText } from "@/lib/geo";
@@ -20,20 +19,17 @@ export default async function Promote({ params }: { params: Promise<{ id: string
   const { data } = await supabase.from("businesses").select("*").eq("id", id).eq("owner_id", user!.id).maybeSingle();
   if (!data) notFound();
   const biz = data as Business;
-  const [{ data: optins }, ratings, { data: promos }, { data: photoRows }, { data: auds }] = await Promise.all([
+  const [{ data: optins }, { data: promos }, { data: photoRows }] = await Promise.all([
     supabase.rpc("optin_count"),
-    ratingsFor(supabase, [id]),
     supabase.from("promotions").select("*").eq("business_id", id).order("created_at", { ascending: false }).limit(5),
     supabase.from("business_photos").select("id, url, caption, post_id, position, poster_url").eq("business_id", id).eq("hidden", false).order("created_at", { ascending: false }).limit(200),
-    supabase.from("audiences").select("id, name, targets, age_min").eq("business_id", id).order("created_at", { ascending: false }).limit(20),
   ]);
-  const photos = group((photoRows as { id: string; url: string; caption: string | null; post_id: string | null; position: number | null; poster_url: string | null }[]) || []).map((p) => ({ id: p.id, url: p.posters[0] || p.url })).filter((p) => !isVideo(p.url));
+  const photos = group((photoRows as { id: string; url: string; caption: string | null; post_id: string | null; position: number | null; poster_url: string | null }[]) || []).map((p) => ({ id: p.id, url: isVideo(p.url) ? p.posters[0] || p.poster_url || "" : p.url, video: isVideo(p.url) ? p.url : null }));
   const running = ((promos as Promotion[]) || []).find(isRunning);
-  const r = ratings.get(id);
   return (
-    <div className="wrap" style={{ marginBottom: 40 }}>
+    <div className="wrap" style={{ marginBottom: 0 }}>
       <p className="muted" style={{ marginTop: 14 }}><Link href={`/dashboard/${id}`}>← Back to dashboard</Link></p>
-      <h1>Promote {biz.name}</h1>
+      <h1>Promote</h1>
       {running && (
         <section className="card" style={{ marginBottom: 18 }}>
           <p style={{ margin: "0 0 10px" }}><b style={{ color: "var(--brand)" }}>Your promotion is running</b> until {new Date(running.ends_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.</p>
@@ -46,9 +42,6 @@ export default async function Promote({ params }: { params: Promise<{ id: string
       <PromoteForm
         biz={{ id: biz.id, name: biz.name, logo_url: biz.logo_url, category: biz.category, city: biz.city, state: biz.state, address: addressText(biz), website: biz.website }}
         photos={photos}
-        audiences={(auds as Audience[]) || []}
-        features={biz.amenities.map((a) => AMENITY_LABEL[a]).filter(Boolean).slice(0, 3)}
-        rating={r ? { rating: Number(r.rating), count: r.review_count } : null}
         optins={typeof optins === "number" ? optins : 0}
       />
     </div>
